@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 for (const difficulty of ['easy', 'normal', 'hard'])
-  for (const index of [0, 1, 2])
+  for (const index of [0, 1, 2, 3, 4])
     test(`circuit ${index}, ${difficulty}: scenery, relief, obstacle, shortcut and complete race`, async ({
       page,
     }) => {

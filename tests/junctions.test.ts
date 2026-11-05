@@ -4,7 +4,7 @@ import { Track } from '../src/track';
 import { Race, wrap } from '../src/race';
 import { karts } from '../src/config';
 describe('shortcut junctions have no invisible wall on the main road', () => {
-  it.each([0, 1, 2])(
+  it.each([0, 1, 2, 3, 4])(
     'the entire width of main road %i remains driveable with either route hint',
     (index) => {
       const track = new Track(index);
@@ -23,7 +23,7 @@ describe('shortcut junctions have no invisible wall on the main road', () => {
           }
     },
   );
-  it.each([0, 1, 2])(
+  it.each([0, 1, 2, 3, 4])(
     'a driver can continue along main road %i past entry and exit, without sticking or respawning',
     (index) => {
       for (const end of [false, true])

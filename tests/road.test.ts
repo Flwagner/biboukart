@@ -4,7 +4,7 @@ import { Track } from '../src/track';
 import { trackDefinitions } from '../src/config';
 import { createRoadGeometry } from '../src/road';
 describe('full-width asphalt and clipped shoulders', () => {
-  it.each([0, 1, 2])(
+  it.each([0, 1, 2, 3, 4])(
     'road %i never narrows and no grass shoulder enters either paved surface',
     (index) => {
       const track = new Track(index),

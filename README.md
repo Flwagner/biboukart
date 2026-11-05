@@ -6,7 +6,8 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 
 - **PC : 1 à 4 humains** sur un même appareil, clavier partagé et/ou manettes.
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
-- 4 personnages : Roxy le renard, Couscous le lapin noir, Bao le panda et Raclette le chat blanc ; 4 karts aux caractéristiques différentes et 3 circuits.
+- 8 personnages et 8 karts aux silhouettes et caractéristiques différentes.
+- 5 circuits : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons (montagnes enneigées, sapins, chalets et neige animée) et Boulevard des bibous (immeubles, vitrines, lampadaires et feux). Chacun propose du relief, un raccourci et un obstacle mobile.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
 - Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
 - Moulins, arches rocheuses et palmiers ; terrain vallonné, bosses permettant de vrais sauts, obstacles mobiles annoncés et raccourcis étroits éloignés du tracé principal.

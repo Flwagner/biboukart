@@ -23,7 +23,7 @@ export function scenery(track: Track) {
     p.addScaledVector(new THREE.Vector3(tan.z, 0, -tan.x).normalize(), side);
     const normal = new THREE.Vector3(tan.z, 0, -tan.x).normalize();
     // Decorations must clear both roads, including the inside of shortcut bends.
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 60; attempt++) {
       const branch =
         Math.min(...track.shortcut.samples.map((s) => Math.hypot(p.x - s.x, p.z - s.z))) -
         track.shortcut.width / 2;
@@ -101,7 +101,7 @@ export function scenery(track: Track) {
       }
       group.add(cactus);
     }
-  } else {
+  } else if (track.index === 2) {
     for (let i = 0; i < 24; i++) {
       const p = location(i / 24, (i % 2 ? 1 : -1) * (14 + (i % 3) * 3)),
         palm = new THREE.Group();
@@ -136,6 +136,122 @@ export function scenery(track: Track) {
       group.add(hut);
     }
   }
+  if (track.index === 3) {
+    group.name = 'snow-scenery';
+    for (let i = 0; i < 62; i++) {
+      const p = location(i / 62, (i % 2 ? 1 : -1) * (15 + (i % 5) * 4));
+      const pine = new THREE.Group();
+      pine.position.copy(p);
+      const height = 4 + (i % 4);
+      add(pine, '#77685c', [0.45, height, 0.45], [0, height / 2, 0]);
+      for (let layer = 0; layer < 3; layer++) {
+        const radius = 2.1 - layer * 0.45;
+        const needles = new THREE.Mesh(
+          new THREE.ConeGeometry(radius, height * 0.6, 7),
+          material('#46716c'),
+        );
+        needles.position.y = height * (0.45 + layer * 0.22);
+        pine.add(needles);
+        const snow = new THREE.Mesh(
+          new THREE.ConeGeometry(radius * 0.92, height * 0.5, 7),
+          material('#f5fbff'),
+        );
+        snow.position.y = needles.position.y + height * 0.1;
+        pine.add(snow);
+      }
+      group.add(pine);
+    }
+    for (const t of [0.04, 0.48, 0.82]) {
+      const p = location(t, 24),
+        chalet = new THREE.Group();
+      chalet.position.copy(p);
+      chalet.rotation.y = t * Math.PI * 2;
+      add(chalet, '#a47758', [7, 4.5, 6], [0, 2.25, 0]);
+      for (const side of [-1, 1]) {
+        const roof = add(chalet, '#f5fbff', [4.7, 0.4, 7.5], [side * 1.85, 5.2, 0]);
+        roof.rotation.z = -side * 0.5;
+        add(chalet, '#ffe2a3', [1.2, 1.4, 0.08], [side * 2, 2.6, 3.04]);
+      }
+      add(chalet, '#654f44', [1.2, 2.4, 0.1], [0, 1.2, 3.05]);
+      add(chalet, '#8a807d', [0.7, 2, 0.8], [2, 5.8, -1]);
+      group.add(chalet);
+    }
+    for (let i = 0; i < 48; i++) {
+      for (const side of [-1, 1]) {
+        const p = track.at(i / 48),
+          tangent = track.tangent(i / 48);
+        p.addScaledVector(
+          new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+          side * (track.width / 2 + 1),
+        );
+        if (
+          track.overlapsRoad(p, 'shortcut', 1) ||
+          track.nearest(p).distance < track.width / 2 + 0.5
+        )
+          continue;
+        add(group, '#da746b', [0.18, 1.5, 0.18], [p.x, p.y + 0.75, p.z]);
+        add(group, '#f7fbff', [0.23, 0.4, 0.23], [p.x, p.y + 1.3, p.z]);
+      }
+    }
+  } else if (track.index === 4) {
+    group.name = 'city-scenery';
+    const palette = ['#7b91aa', '#a899a4', '#c4b6a3', '#7caaa9', '#8390b4'];
+    for (let i = 0; i < 42; i++) {
+      const p = location(i / 42, (i % 2 ? 1 : -1) * (22 + (i % 3) * 10));
+      const building = new THREE.Group();
+      building.position.copy(p);
+      const width = 6 + (i % 3),
+        depth = 7,
+        floors = 3 + ((i * 7) % 8),
+        height = floors * 3;
+      add(building, '#cdd1d3', [width + 2, 0.4, depth + 2], [0, 0.2, 0]);
+      add(building, palette[i % palette.length], [width, height, depth], [0, height / 2, 0]);
+      add(building, '#536575', [width + 0.5, 0.5, depth + 0.5], [0, height, 0]);
+      add(building, '#657987', [2, 1, 2], [0, height + 0.6, 0]);
+      for (let floor = 0; floor < floors; floor++)
+        for (const side of [-1, 1])
+          for (const x of [-width * 0.3, 0, width * 0.3]) {
+            const lit = (floor + i + Math.round(x * 10)) % 3 !== 0;
+            add(
+              building,
+              lit ? '#f8e3aa' : '#405d75',
+              [1, 1.4, 0.06],
+              [x, floor * 3 + 1.7, side * (depth / 2 + 0.04)],
+            );
+            add(
+              building,
+              lit ? '#c3e2ed' : '#405d75',
+              [0.06, 1.4, 1],
+              [side * (width / 2 + 0.04), floor * 3 + 1.7, x * 0.7],
+            );
+          }
+      add(building, '#385267', [1.4, 2.5, 0.1], [0, 1.25, depth / 2 + 0.08]);
+      if (i % 3 === 0) {
+        add(building, '#e5a36d', [width, 0.3, 1.6], [0, 3, depth / 2 + 0.7]);
+        add(building, '#f5e6c8', [width * 0.8, 0.7, 0.1], [0, 3.8, depth / 2 + 0.1]);
+      }
+      group.add(building);
+    }
+    for (let i = 0; i < 32; i++) {
+      const p = location(i / 32, (i % 2 ? 1 : -1) * (track.width / 2 + 7));
+      const lamp = new THREE.Group();
+      lamp.position.copy(p);
+      add(lamp, '#42576b', [0.18, 6, 0.18], [0, 3, 0]);
+      add(lamp, '#42576b', [1.8, 0.18, 0.18], [0.8, 6, 0]);
+      add(lamp, '#fff1bb', [0.9, 0.2, 0.5], [1.4, 5.85, 0]);
+      if (i % 4 === 0) {
+        add(lamp, '#283c4d', [0.65, 1.7, 0.45], [0, 4.2, 0.3]);
+        for (let light = 0; light < 3; light++)
+          add(
+            lamp,
+            ['#ee7b71', '#f6cc63', '#83ce9b'][light],
+            [0.35, 0.35, 0.08],
+            [0, 4.75 - light * 0.5, 0.56],
+          );
+      }
+      group.add(lamp);
+    }
+  }
   return { group, moving };
 }
 export function obstacleModel(obstacle: Obstacle) {
@@ -154,8 +270,11 @@ export function obstacleModel(obstacle: Obstacle) {
     block('#f6dfb3', [3.6, 0.65, 0.55], [0, 0.9, 0]);
     for (const x of [-1.2, 0, 1.2]) block('#cc6f59', [0.4, 0.7, 0.6], [x, 0.9, 0]);
     for (const x of [-1.5, 1.5]) block('#4b646a', [0.25, 0.6, 0.35], [x, 0.3, 0]);
-  } else if (obstacle.kind === 'rock') {
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6, 0), material('#a96243'));
+  } else if (obstacle.kind === 'rock' || obstacle.kind === 'snowball') {
+    const rock = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.6, 0),
+      material(obstacle.kind === 'snowball' ? '#f4fbff' : '#a96243'),
+    );
     group.add(rock);
   } else {
     const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), material('#e88e6a'));

@@ -1,6 +1,24 @@
 import * as THREE from 'three';
 import { trackDefinitions } from './config';
 export type Route = 'main' | 'shortcut';
+/** Use the real racing curve for every destination card. */
+export function trackPreviewPath(index: number) {
+  const curve = new THREE.CatmullRomCurve3(
+    trackDefinitions[index].points.map(([x, z]) => new THREE.Vector3(x, 0, z)),
+    true,
+    'catmullrom',
+    0.3,
+  );
+  return (
+    curve
+      .getPoints(100)
+      .map(
+        (p, i) =>
+          `${i ? 'L' : 'M'}${(110 + p.x * 0.95).toFixed(1)} ${(72.5 + p.z * 0.65).toFixed(1)}`,
+      )
+      .join(' ') + ' Z'
+  );
+}
 export interface Surface {
   route: Route;
   t: number;
@@ -14,7 +32,7 @@ export interface Surface {
   bank: number;
 }
 export interface Obstacle {
-  kind: 'barrier' | 'rock' | 'crab';
+  kind: 'barrier' | 'rock' | 'crab' | 'snowball';
   t: number;
   radius: number;
   pos: THREE.Vector3;
@@ -24,6 +42,8 @@ const shortcutDefinitions = [
   { start: 0.08, end: 0.42, width: 5.2 },
   { start: 0.27, end: 0.44, width: 4.8 },
   { start: 0.27, end: 0.43, width: 5 },
+  { start: 0.26, end: 0.44, width: 5 },
+  { start: 0.26, end: 0.45, width: 5.2 },
 ];
 export class ShortcutCurve extends THREE.Curve<THREE.Vector3> {
   constructor(
@@ -104,7 +124,9 @@ export class Track {
       [0.68, 0.87],
       [0.1, 0.83],
       [0.18, 0.62],
-    ][index].map((t) => ({ t, height: [2.2, 2.6, 2][index], halfLength: 10 }));
+      [0.12, 0.77],
+      [0.14, 0.71],
+    ][index].map((t) => ({ t, height: [2.2, 2.6, 2, 2.8, 1.8][index], halfLength: 10 }));
     this.samples = Array.from({ length: 512 }, (_, i) => this.at(i / 512));
     this.tangents = Array.from({ length: 512 }, (_, i) => this.tangent(i / 512));
     const spec = shortcutDefinitions[index],
@@ -123,16 +145,19 @@ export class Track {
       .sub(this.at((spec.start + spec.end) / 2));
     inward.y = 0;
     inward.normalize();
-    const curve = new ShortcutCurve(base, inward, [12, 20, 12][index]);
+    const curve = new ShortcutCurve(base, inward, [12, 20, 12, 18, 24][index]);
+    const shortcutSegments = index >= 3 ? 256 : 128;
     this.shortcut = {
       ...spec,
       curve,
       length: curve.getLength(),
-      samples: Array.from({ length: 129 }, (_, i) => curve.getPointAt(i / 128)),
+      samples: Array.from({ length: shortcutSegments + 1 }, (_, i) =>
+        curve.getPointAt(i / shortcutSegments),
+      ),
       entryEndT: spec.start + 0.025,
     };
-    this.shortcut.samples = Array.from({ length: 129 }, (_, i) =>
-      this.routeAt('shortcut', i / 128),
+    this.shortcut.samples = Array.from({ length: shortcutSegments + 1 }, (_, i) =>
+      this.routeAt('shortcut', i / shortcutSegments),
     );
     const detached = this.shortcut.samples.find(
       (p) => this.nearest(p).distance > this.width / 2 + 0.3,
@@ -145,8 +170,12 @@ export class Track {
     return this.baseElevation(t) + this.bumpHeight(t);
   }
   baseElevation(t: number) {
-    const amplitude = [4.5, 6.2, 3.7][this.index];
-    return 8 + amplitude * Math.sin(t * Math.PI * 2) + amplitude * 0.32 * Math.sin(t * Math.PI * 4);
+    const amplitude = [4.5, 6.2, 3.7, 7.2, 2.5][this.index];
+    return (
+      (this.index === 3 ? 12 : 8) +
+      amplitude * Math.sin(t * Math.PI * 2) +
+      amplitude * 0.32 * Math.sin(t * Math.PI * 4)
+    );
   }
   bumpHeight(t: number) {
     let height = 0;
@@ -296,11 +325,11 @@ export class Track {
     return this.at(target);
   }
   createObstacle(): Obstacle {
-    const t = [0.55, 0.7, 0.12][this.index];
+    const t = [0.55, 0.7, 0.12, 0.56, 0.58][this.index];
     return {
-      kind: (['barrier', 'rock', 'crab'] as const)[this.index],
+      kind: (['barrier', 'rock', 'crab', 'snowball', 'barrier'] as const)[this.index],
       t,
-      radius: [1.8, 1.6, 1.4][this.index],
+      radius: [1.8, 1.6, 1.4, 1.6, 1.8][this.index],
       pos: this.at(t),
       offset: 0,
     };

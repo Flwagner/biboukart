@@ -367,6 +367,7 @@ export class Renderer {
   hazardMeshes: THREE.Mesh[] = [];
   obstacleMeshes: THREE.Group[] = [];
   animatedScenery: THREE.Group[] = [];
+  snowfall: THREE.Points | null = null;
   track: Track;
   race: Race | null = null;
   effects: RaceEffects | null = null;
@@ -416,6 +417,10 @@ export class Renderer {
     this.effects = null;
     this.podium = null;
     this.world.traverse((o) => {
+      if (o instanceof THREE.Points) {
+        o.geometry.dispose();
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
+      }
       if (o instanceof THREE.InstancedMesh) o.dispose();
       if (o instanceof THREE.Mesh && ![box, sphere, wheel].includes(o.geometry))
         o.geometry.dispose();
@@ -433,6 +438,7 @@ export class Renderer {
     this.hazardMeshes = [];
     this.obstacleMeshes = [];
     this.animatedScenery = [];
+    this.snowfall = null;
   }
   buildWorld(track: Track) {
     this.clearWorld();
@@ -596,6 +602,39 @@ export class Renderer {
       this.world.add(rocks);
     }
     for (let i = 0; i < 9; i++) {
+      if (track.index === 4) {
+        const height = 25 + (i % 4) * 12;
+        block(
+          this.world,
+          ['#8397ad', '#94a5b6', '#798ba3'][i % 3],
+          [16, height, 18],
+          [Math.sin(i * 2.4) * 180, height / 2, Math.cos(i * 2.4) * 170],
+        );
+        continue;
+      }
+      if (track.index === 3) {
+        const height = 48 + (i % 4) * 14,
+          radius = 28 + (i % 3) * 7;
+        const x = Math.sin(i * 2.4) * 180,
+          z = Math.cos(i * 2.4) * 170;
+        const peak = mesh(
+          new THREE.ConeGeometry(radius, height, 7),
+          '#9aafbf',
+          x,
+          height / 2 - 2,
+          z,
+        );
+        this.world.add(peak);
+        const cap = mesh(
+          new THREE.ConeGeometry(radius * 0.48, height * 0.48, 7),
+          '#f5fbff',
+          x,
+          height * 0.76 - 1.8,
+          z,
+        );
+        this.world.add(cap);
+        continue;
+      }
       const hill = mesh(
         new THREE.ConeGeometry(22 + (i % 3) * 9, 25 + (i % 4) * 7, 6),
         track.index === 1 ? '#b87955' : track.index === 2 ? '#74afa4' : '#79a46f',
@@ -644,6 +683,28 @@ export class Renderer {
     }
     batchStatic(this.world);
     this.world.add(...this.animatedScenery);
+    if (track.index === 3) {
+      const positions = new Float32Array(600 * 3);
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i] = (random() - 0.5) * 230;
+        positions[i + 1] = random() * 55;
+        positions[i + 2] = (random() - 0.5) * 230;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      this.snowfall = new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+          color: '#ffffff',
+          size: 0.22,
+          transparent: true,
+          opacity: 0.8,
+          depthWrite: false,
+        }),
+      );
+      this.snowfall.name = 'snowfall';
+      this.world.add(this.snowfall);
+    }
   }
   start(race: Race) {
     this.race = race;
@@ -741,7 +802,7 @@ export class Renderer {
           race.track.tangent(obstacle.t).x,
           race.track.tangent(obstacle.t).z,
         );
-        if (obstacle.kind === 'rock') {
+        if (obstacle.kind === 'rock' || obstacle.kind === 'snowball') {
           model.position.y += 1.6;
           model.rotation.z = race.elapsed * 1.4;
         }
@@ -803,6 +864,13 @@ export class Renderer {
     }
     for (const sails of this.animatedScenery)
       sails.rotation.z = this.reduced ? 0 : sails.rotation.z + (race ? effectsDt : dt) * 0.3;
+    if (this.snowfall && !this.reduced) {
+      const positions = this.snowfall.geometry.getAttribute('position');
+      const step = race ? effectsDt : dt;
+      for (let i = 0; i < positions.count; i++)
+        positions.setY(i, (positions.getY(i) - step * (1.5 + (i % 3) * 0.4) + 55) % 55);
+      positions.needsUpdate = true;
+    }
     const count = race ? this.cameras.length : 1;
     let views = viewports(count, this.width, this.height);
     if (this.podium) {

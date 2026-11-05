@@ -6,7 +6,9 @@ export function createRoadGeometry(track: Track) {
   const vertices: number[] = [],
     colors: number[] = [],
     def = trackDefinitions[track.index];
-  const roadColor = new THREE.Color('#59636c'),
+  const roadColor = new THREE.Color(
+      track.index === 3 ? '#788f9f' : track.index === 4 ? '#4c5664' : '#59636c',
+    ),
     groundColor = new THREE.Color(def.ground),
     edgeColors = [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
     white = new THREE.Color('#d6d5c5');

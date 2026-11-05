@@ -19,7 +19,7 @@ function meshHeight(geometry: THREE.BufferGeometry, p: THREE.Vector3) {
   return u + v <= 1 ? a + (d - a) * u + (b - a) * v : c + (b - c) * (1 - u) + (d - c) * (1 - v);
 }
 describe('terrain never buries a paved road or shortcut merge', () => {
-  it.each([0, 1, 2])(
+  it.each([0, 1, 2, 3, 4])(
     'rendered triangles stay below every paved corridor on circuit %i',
     (index) => {
       const track = new Track(index),

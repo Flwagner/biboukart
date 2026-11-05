@@ -1,5 +1,6 @@
 import './style.css';
 import { kartPortrait } from './portraits';
+import { trackPreviewPath } from './track';
 import {
   characters,
   karts,
@@ -97,7 +98,7 @@ function home() {
   hud.innerHTML = '';
   renderer.menu(selectedTrack);
   app.innerHTML = shell(
-    `<section class="hero"><div class="eyebrow"><span></span> LE BONHEUR À PLUSIEURS</div><h1>Petits karts.<br>Grandes <em>aventures.</em></h1><p>Une bande de pilotes, des cadeaux surprises et<br class="desktop"> une seule règle : s’amuser jusqu’à la ligne d’arrivée.</p><div class="hero-actions">${button('C’est parti <span>↗</span>', 'play', 'primary large')}${button('Comment jouer', 'help', 'secondary large')}</div><div class="hero-meta"><span>♟ 1–4 pilotes sur PC</span><span>◉ 1–2 sur mobile</span><span>✦ Sans installation</span></div></section><div class="hero-sticker"><span>🏁</span><strong>On fait<br>la course ?</strong><small>3 circuits à découvrir</small></div><div class="bottom-bar"><div><span class="small-label">VOTRE PROCHAINE ESCALE</span><strong>${trackDefinitions[selectedTrack].icon} ${trackDefinitions[selectedTrack].name}</strong></div>${button('Réglages ⚙', 'settings', 'text-button')}</div>`,
+    `<section class="hero"><div class="eyebrow"><span></span> LE BONHEUR À PLUSIEURS</div><h1>Petits karts.<br>Grandes <em>aventures.</em></h1><p>Une bande de pilotes, des cadeaux surprises et<br class="desktop"> une seule règle : s’amuser jusqu’à la ligne d’arrivée.</p><div class="hero-actions">${button('C’est parti <span>↗</span>', 'play', 'primary large')}${button('Comment jouer', 'help', 'secondary large')}</div><div class="hero-meta"><span>♟ 1–4 pilotes sur PC</span><span>◉ 1–2 sur mobile</span><span>✦ Sans installation</span></div></section><div class="hero-sticker"><span>🏁</span><strong>On fait<br>la course ?</strong><small>${trackDefinitions.length} circuits à découvrir</small></div><div class="bottom-bar"><div><span class="small-label">VOTRE PROCHAINE ESCALE</span><strong>${trackDefinitions[selectedTrack].icon} ${trackDefinitions[selectedTrack].name}</strong></div>${button('Réglages ⚙', 'settings', 'text-button')}</div>`,
   );
   common();
   $('#play').onclick = () => {
@@ -166,7 +167,7 @@ function playerCard(p: PlayerConfig, i: number) {
 function tracks() {
   screen = 'tracks';
   app.innerHTML = shell(
-    `<section class="panel tracks"><span class="eyebrow">02 / LA DESTINATION</span><h1>On part où ?</h1><p>Trois ambiances. La même envie de gagner.</p><div class="track-grid">${trackDefinitions.map((t, i) => `<button class="track-card ${i === selectedTrack ? 'active' : ''}" data-track="${i}" aria-pressed="${i === selectedTrack}"><div class="track-art track-${i}" style="--track-color:${t.color}"><span>${t.icon}</span><svg viewBox="0 0 220 145" aria-hidden="true"><path d="${i === 0 ? 'M50 110 C0 35 80 0 150 25 S220 110 150 120 S70 140 50 110 Z' : i === 1 ? 'M40 110 C10 70 75 10 120 25 S210 50 150 70 S215 120 135 125 S65 140 40 110 Z' : 'M40 100 C0 65 55 0 100 30 S190 0 180 60 S220 125 130 115 S80 145 40 100 Z'}"/></svg><span class="track-number">0${i + 1}</span></div><div class="track-info"><small>${i === 0 ? 'POUR PRENDRE SES MARQUES' : i === 1 ? 'POUR PRENDRE DE LA VITESSE' : 'POUR PRENDRE LE LARGE'}</small><h2>${t.name}</h2><p>${t.subtitle}</p><span>3 tours <b>·</b> ${i === 0 ? 'Facile' : i === 1 ? 'Intermédiaire' : 'Technique'}</span></div><div class="selected-mark">✓</div></button>`).join('')}</div><div class="panel-actions">${button('← Les pilotes', 'back', 'secondary')}<span class="race-summary">${playerCount} pilote${playerCount > 1 ? 's' : ''} + ${6 - playerCount} bots · 3 tours</span>${button('Lancer la course 🏁', 'start', 'primary')}</div></section>`,
+    `<section class="panel tracks"><span class="eyebrow">02 / LA DESTINATION</span><h1>On part où ?</h1><p>Cinq ambiances. La même envie de gagner.</p><div class="track-grid">${trackDefinitions.map((t, i) => `<button class="track-card ${i === selectedTrack ? 'active' : ''}" data-track="${i}" aria-pressed="${i === selectedTrack}"><div class="track-art track-${i}" style="--track-color:${t.color}"><span>${t.icon}</span><svg viewBox="0 0 220 145" aria-hidden="true"><path d="${trackPreviewPath(i)}"/></svg><span class="track-number">0${i + 1}</span></div><div class="track-info"><small>${['POUR PRENDRE SES MARQUES', 'POUR PRENDRE DE LA VITESSE', 'POUR PRENDRE LE LARGE', 'POUR PRENDRE DE LA HAUTEUR', 'POUR PRENDRE LA VILLE'][i]}</small><h2>${t.name}</h2><p>${t.subtitle}</p><span>3 tours <b>·</b> ${i === 0 ? 'Facile' : i === 1 || i === 4 ? 'Intermédiaire' : 'Technique'}</span></div><div class="selected-mark">✓</div></button>`).join('')}</div><div class="panel-actions">${button('← Les pilotes', 'back', 'secondary')}<span class="race-summary">${playerCount} pilote${playerCount > 1 ? 's' : ''} + ${6 - playerCount} bots · 3 tours</span>${button('Lancer la course 🏁', 'start', 'primary')}</div></section>`,
     'LES CIRCUITS',
   );
   common();
