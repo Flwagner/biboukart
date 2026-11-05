@@ -262,6 +262,53 @@ test('turbo and gift feedback follows actual pickups, expires and respects reduc
   await page.locator('#quit').click();
   expect(await page.evaluate(() => window.__bibou.renderer.effects)).toBeNull();
 });
+test('minimaps, player-specific last lap, animated controls and 3D podium', async ({ page }) => {
+  await ready(page);
+  await page.locator('#play').click();
+  await page.locator('[data-count="2"]').click();
+  await page.locator('#next').click();
+  await page.locator('#start').click();
+  await expect(page.locator('.minimap')).toHaveCount(2);
+  await expect(page.locator('[data-map-racer]')).toHaveCount(12);
+  await page.evaluate(() => {
+    const race = window.__bibou.race;
+    race.countdown = 0;
+    race.elapsed = 5;
+    race.racers[0].speed = 8;
+    race.racers[0].progress = 2.02;
+    race.racers[0].checkpoint = 15;
+    race.racers[0].lap = 1;
+  });
+  await expect(page.locator('#hud-0 [data-lastlap]')).toBeVisible();
+  await expect(page.locator('#hud-1 [data-lastlap]')).not.toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => Math.abs(window.__bibou.renderer.kartMeshes[0].userData.rig.wheelAngle)),
+    )
+    .toBeGreaterThan(0.01);
+  await page.evaluate(() => {
+    window.__bibou.race.hit(window.__bibou.race.racers[0]);
+  });
+  expect(
+    await page.evaluate(() => window.__bibou.renderer.kartMeshes[0].userData.rig.reaction),
+  ).toBe('hit');
+  await page.evaluate(() => {
+    window.__bibou.race.elapsed += 4;
+  });
+  await expect(page.locator('#hud-0 [data-lastlap]')).not.toBeVisible();
+  await page.evaluate(() => window.__bibou.finish());
+  await expect(page.locator('#podium-view')).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      window.__bibou.renderer.podium.models.map((m: any) => m.userData.racerId),
+    ),
+  ).toEqual([0, 1, 2]);
+  await page.screenshot({ path: 'test-results/podium.png' });
+  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+  await expect
+    .poll(() => page.evaluate(() => window.__bibou.renderer.podium.models[0].rotation.y))
+    .toBe(0);
+});
 test.describe('mobile landscape', () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   test('two touch players, simultaneous pointers, rotation and interruption', async ({ page }) => {

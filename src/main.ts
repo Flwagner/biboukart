@@ -14,6 +14,7 @@ import { Renderer, viewports } from './rendering';
 import { Inputs } from './input';
 import { Audio } from './audio';
 import { loadSelection, saveSelection } from './storage';
+import { mapProjection, minimapMarkup } from './minimap';
 
 const app = document.querySelector<HTMLElement>('#app')!,
   hud = document.querySelector<HTMLElement>('#hud')!;
@@ -61,13 +62,15 @@ let race: Race | null = null,
 let gamepadMenuLatch = false,
   gamepadMenuLast = 0;
 let pendingUse: boolean[] = [];
+let lastLapUntil: number[] = [];
+let projectMap: ReturnType<typeof mapProjection> | null = null;
 const $ = (selector: string) => app.querySelector<HTMLElement>(selector)!;
 const button = (label: string, id: string, cls = '') =>
   `<button id="${id}" class="${cls}">${label}</button>`;
 const shell = (body: string, step = '') =>
   `<div class="menu-shell"><header class="topbar"><a class="brand" href="#" id="brand">bibou<span>kart</span><i>✦</i></a><span class="top-tag">${step || 'PETITS KARTS. GRANDES ÉMOTIONS.'}</span><button id="sound" class="icon-button" aria-label="Activer ou couper le son">${settings.volume ? '♫' : '♪'}</button></header>${body}<footer><span>FAIT POUR JOUER ENSEMBLE</span><span class="online-dot">100 % navigateur · 100 % local</span></footer></div>`;
 function common() {
-  document.body.classList.remove('racing');
+  document.body.classList.remove('racing', 'showing-podium');
   $('#brand')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (race && !race.finished) return;
@@ -250,6 +253,8 @@ function keyLabel(code: string) {
     .replace('Space', 'Espace');
 }
 function start() {
+  document.body.classList.remove('showing-podium');
+  lastLapUntil = [];
   audio.setPaused(document.hidden);
   saveSelection({ count: playerCount, track: selectedTrack, players });
   void audio.unlock();
@@ -265,6 +270,8 @@ function start() {
   document.body.classList.add('racing');
   audio.play('countdown');
   race.onEvent = (kind, id, item) => {
+    renderer.react(kind, id);
+    if (kind === 'lastlap' && race?.racers[id]?.human) lastLapUntil[id] = race.elapsed + 3;
     if (kind === 'pickup' && race) renderer.effects?.pickup(id, race.racers[id].pos);
     if (id < 0) {
       audio.play(kind);
@@ -278,6 +285,7 @@ function start() {
 }
 function buildHUD() {
   if (!race) return;
+  projectMap = mapProjection(race.track);
   const views = viewports(playerCount, innerWidth, innerHeight);
   hud.innerHTML =
     views
@@ -288,6 +296,13 @@ function buildHUD() {
       )
       .join('') +
     `<button id="pause" class="race-pause" aria-label="Pause">Ⅱ</button><div id="race-clock" class="race-clock"></div><div class="orientation">↻<strong>Tournez votre appareil</strong><span>La piste est plus belle en paysage.</span></div>${playerCount === 3 ? '<div class="fourth-cell"><strong>bibou<span>kart</span></strong><p>Six pilotes. Une seule arrivée.</p></div>' : ''}`;
+  for (let i = 0; i < playerCount; i++)
+    hud
+      .querySelector(`#hud-${i}`)!
+      .insertAdjacentHTML(
+        'beforeend',
+        `${minimapMarkup(race.track, i)}<div class="last-lap-banner" data-lastlap hidden role="status">🏁 Dernier tour !</div>`,
+      );
   inputs.bindTouch(hud);
   hud.querySelector<HTMLElement>('#pause')!.onclick = () => pause();
 }
@@ -297,6 +312,16 @@ function updateHUD() {
   for (let i = 0; i < playerCount; i++) {
     const r = race.racers[i],
       el = hud.querySelector<HTMLElement>(`#hud-${i}`)!;
+    for (const racer of race.racers) {
+      const point = projectMap!(racer.pos.x, racer.pos.z);
+      el.querySelector(`[data-map-racer="${racer.id}"]`)!.setAttribute(
+        'transform',
+        `translate(${point.x.toFixed(1)},${point.y.toFixed(1)})`,
+      );
+    }
+    el.querySelector<HTMLElement>('[data-lastlap]')!.hidden = !(
+      race.elapsed < (lastLapUntil[i] ?? 0) && !r.finished
+    );
     el.querySelector('[data-lap]')!.innerHTML = `${Math.min(3, r.lap + 1)} <em>/ 3</em>`;
     el.querySelector('[data-position]')!.innerHTML = `${ranking.indexOf(r) + 1}<small> / 6</small>`;
     el.querySelector('[data-speed]')!.textContent = String(Math.round(Math.abs(r.speed) * 3.6));
@@ -444,6 +469,17 @@ function results() {
   $('#home').onclick = home;
   $('#circuits').onclick = tracks;
   $('#again').onclick = start;
+  renderer.showPodium(race);
+  const resultPanel = $('.results'),
+    details = document.createElement('div');
+  details.className = 'results-details';
+  details.append(...Array.from(resultPanel.childNodes));
+  resultPanel.append(details);
+  resultPanel.insertAdjacentHTML(
+    'afterbegin',
+    '<div id="podium-view" role="img" aria-label="Podium 3D animé des trois premiers concurrents"></div>',
+  );
+  document.body.classList.add('showing-podium');
 }
 function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;

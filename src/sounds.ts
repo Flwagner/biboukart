@@ -29,6 +29,8 @@ export function soundEffect(
   } else if (sound === 'hit') {
     noise(context, output, buffer, time, 0.19, 0.22, 850, 180, 'lowpass');
     tone(context, output, 140, time, 0.22, 0.24, 'sine', 32);
+  } else if (sound === 'lastlap') {
+    [79, 84, 91].forEach((note, i) => bell(note, i * 0.1, 0.22, 0.1));
   } else if (sound === 'finish') {
     [72, 76, 79, 84, 79, 84].forEach((note, i) => bell(note, i * 0.11, 0.36, 0.13));
   } else if (sound === 'go') {

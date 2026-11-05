@@ -55,6 +55,7 @@ export interface Racer {
   previous: THREE.Vector3;
   heading: number;
   speed: number;
+  steering: number;
   progress: number;
   lastT: number;
   checkpoint: number;
@@ -109,6 +110,7 @@ export class Race {
         previous: p.clone(),
         heading: Math.atan2(tangent.x, tangent.z),
         speed: 0,
+        steering: 0,
         progress: t - 1,
         lastT: t,
         checkpoint: 0,
@@ -231,6 +233,7 @@ export class Race {
       }
       const input = r.human ? (inputs[r.id] ?? idleInput()) : this.ai(r),
         spec = karts[r.config.kart];
+      r.steering = input.steer;
       if (input.use) this.use(r);
       const near = this.track.nearest(r.pos),
         off = near.distance > this.track.width / 2;
@@ -264,7 +267,9 @@ export class Race {
       r.lastT = n.t;
       const expected = (r.checkpoint + 1) / 8;
       if (r.progress >= expected && r.progress < expected + 0.12) r.checkpoint++;
+      const previousLap = r.lap;
       r.lap = Math.min(3, Math.floor(r.checkpoint / 8));
+      if (r.lap === 2 && previousLap < 2) this.onEvent('lastlap', r.id);
       r.wrongWay = delta < -0.00015 && r.speed > 3;
       if (r.checkpoint >= 24) {
         r.finished = true;

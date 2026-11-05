@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { characters, karts, trackDefinitions } from './config';
 import { Race, Track } from './race';
 import { RaceEffects } from './effects';
+import { animateKart, react, type KartRig } from './animation';
 const mat = (color: THREE.ColorRepresentation) =>
   new THREE.MeshLambertMaterial({ color, flatShading: true });
 const materialCache = new Map<string, THREE.Material>();
@@ -68,24 +69,30 @@ export function makeKart(character: number, kart: number, id: number) {
   const group = new THREE.Group(),
     spec = karts[kart],
     c = characters[character];
+  const driver = new THREE.Group();
+  const wheels: KartRig['wheels'] = [];
   block(group, spec.color, [1.65, 0.55, 2.6], [0, 0.65, 0]);
   block(group, '#233044', [1.1, 0.4, 0.85], [0, 0.95, -0.45]);
   block(group, spec.color, [1.9, 0.18, 0.3], [0, 0.7, -1.3]);
   block(group, '#fff3c7', [1.35, 0.15, 0.1], [0, 0.7, 1.33]);
   for (const x of [-0.94, 0.94])
     for (const z of [-0.85, 0.85]) {
-      const w = mesh(wheel, '#263247', x, 0.43, z);
+      const w = mesh(wheel, '#263247');
       w.rotation.z = Math.PI / 2;
-      group.add(w);
+      block(w, '#a6b6c1', [0.6, 0.025, 0.1], [0, x < 0 ? 0.19 : -0.19, 0]);
+      const pivot = new THREE.Group();
+      pivot.position.set(x, 0.43, z);
+      pivot.add(w);
+      wheels.push({ pivot, wheel: w, front: z > 0 });
     }
   const head = mesh(sphere, c.color, 0, 1.8, 0);
   head.scale.set(0.63, 0.65, 0.55);
-  group.add(head);
-  block(group, c.color, [0.7, 0.6, 0.65], [0, 1.2, 0]);
+  driver.add(head);
+  block(driver, c.color, [0.7, 0.6, 0.65], [0, 1.2, 0]);
   for (const x of [-0.23, 0.23]) {
     const eye = mesh(sphere, '#152337', x, 1.9, 0.49);
     eye.scale.set(0.085, 0.12, 0.07);
-    group.add(eye);
+    driver.add(eye);
   }
   if (character < 3)
     for (const x of [-0.4, 0.4]) {
@@ -97,13 +104,13 @@ export function makeKart(character: number, kart: number, id: number) {
         0,
       );
       if (character !== 0) ear.scale.set(0.2, character === 1 ? 0.65 : 0.2, 0.2);
-      group.add(ear);
+      driver.add(ear);
     }
   if (character === 3) {
-    block(group, '#ed7279', [0.12, 0.45, 0.12], [0, 2.5, 0]);
+    block(driver, '#ed7279', [0.12, 0.45, 0.12], [0, 2.5, 0]);
     const light = mesh(sphere, '#ffd866', 0, 2.8, 0);
     light.scale.setScalar(0.16);
-    group.add(light);
+    driver.add(light);
   }
   const flag = mesh(
     new THREE.ConeGeometry(0.23, 0.5, 3),
@@ -127,6 +134,18 @@ export function makeKart(character: number, kart: number, id: number) {
   shadow.position.y = 0.025;
   group.add(shadow);
   batchStatic(group);
+  batchStatic(driver);
+  const steering = mesh(new THREE.TorusGeometry(0.28, 0.045, 5, 12), '#263247', 0, 1.35, 0.6);
+  steering.rotation.x = -0.45;
+  group.add(driver, steering, ...wheels.map((w) => w.pivot));
+  group.userData.rig = {
+    driver,
+    steering,
+    wheels,
+    wheelAngle: 0,
+    reaction: null,
+    age: 0,
+  } satisfies KartRig;
   return group;
 }
 export function viewports(count: number, w: number, h: number) {
@@ -155,6 +174,7 @@ export class Renderer {
   track: Track;
   race: Race | null = null;
   effects: RaceEffects | null = null;
+  podium: { models: THREE.Group[]; camera: THREE.PerspectiveCamera } | null = null;
   width = innerWidth;
   height = innerHeight;
   time = 0;
@@ -198,6 +218,7 @@ export class Renderer {
   clearWorld() {
     this.effects?.dispose();
     this.effects = null;
+    this.podium = null;
     this.world.traverse((o) => {
       if (o instanceof THREE.InstancedMesh) o.dispose();
       if (o instanceof THREE.Mesh && ![box, sphere, wheel].includes(o.geometry))
@@ -473,6 +494,7 @@ export class Renderer {
         const g = this.kartMeshes[r.id];
         g.position.lerpVectors(r.previous, r.pos, alpha);
         g.rotation.y = r.heading;
+        animateKart(g.userData.rig, effectsDt, r.speed, r.steering, this.reduced);
         this.shieldMeshes[r.id].visible = r.shield > 0;
         this.shieldMeshes[r.id].rotation.y = this.reduced ? 0 : this.time * 0.5;
         g.visible = this.reduced || r.immune <= 0 || Math.sin(this.time * 24) > -0.35;
@@ -505,13 +527,29 @@ export class Renderer {
         }
       });
     }
-    const count = race ? this.cameras.length : 1,
-      views = viewports(count, this.width, this.height);
+    const count = race ? this.cameras.length : 1;
+    let views = viewports(count, this.width, this.height);
+    if (this.podium) {
+      const rect = document.querySelector('#podium-view')?.getBoundingClientRect();
+      if (rect && rect.width > 0 && rect.height > 0)
+        views = [{ x: rect.left, y: rect.top, w: rect.width, h: rect.height }];
+      this.renderer.setScissorTest(false);
+      this.renderer.setClearColor('#b8d9e1');
+      this.renderer.clear();
+    }
     this.renderer.setScissorTest(true);
     for (let i = 0; i < views.length; i++) {
       const v = views[i];
       let camera = this.cameras[i];
-      if (!race) {
+      if (this.podium) {
+        camera = this.podium.camera;
+        for (const [rank, model] of this.podium.models.entries()) {
+          animateKart(model.userData.rig, dt, 0, 0, this.reduced);
+          model.rotation.y = this.reduced ? 0 : Math.sin(this.time * 1.3 + rank) * 0.1;
+        }
+        camera.position.set(6, 6, 11);
+        camera.lookAt(0, 2.6, 0);
+      } else if (!race) {
         camera = this.cameras[0] ?? new THREE.PerspectiveCamera(55, 1, 0.1, 500);
         this.cameras[0] = camera;
         camera.position.set(
@@ -546,5 +584,61 @@ export class Renderer {
     this.race = null;
     this.cameras = [];
     this.buildWorld(new Track(track));
+  }
+  react(kind: string, id: number) {
+    const rig = this.kartMeshes[id]?.userData.rig as KartRig | undefined;
+    if (rig) react(rig, kind);
+  }
+  showPodium(race: Race) {
+    this.clearWorld();
+    this.race = null;
+    this.cameras = [];
+    this.scene.background = new THREE.Color('#b8d9e1');
+    this.scene.fog = new THREE.Fog('#b8d9e1', 60, 160);
+    const floor = mesh(new THREE.CylinderGeometry(13, 14, 0.5, 32), '#709d88', 0, -0.3, 0);
+    this.world.add(floor);
+    const models: THREE.Group[] = [];
+    const places = [
+      { x: 0, h: 3.2, color: '#e9b94d' },
+      { x: -4, h: 2, color: '#bbcbd5' },
+      { x: 4, h: 1.2, color: '#c98b60' },
+    ];
+    for (const [rank, racer] of race.ranking.slice(0, 3).entries()) {
+      const place = places[rank];
+      block(this.world, place.color, [3.5, place.h, 3.4], [place.x, place.h / 2, 0]);
+      // Readable 3D rank numerals built from simple segments, no font/texture downloads.
+      const digits = [
+        [1, 2],
+        [0, 1, 6, 4, 3],
+        [0, 1, 6, 2, 3],
+      ][rank];
+      const segments = [
+        [0, 0.5],
+        [0.3, 0.25],
+        [0.3, -0.25],
+        [0, -0.5],
+        [-0.3, -0.25],
+        [-0.3, 0.25],
+        [0, 0],
+      ];
+      for (const segment of digits) {
+        const [x, y] = segments[segment];
+        block(
+          this.world,
+          '#fff4d0',
+          segment === 0 || segment === 3 || segment === 6 ? [0.6, 0.1, 0.04] : [0.1, 0.4, 0.04],
+          [place.x + x, place.h * 0.5 + y, 1.73],
+        );
+      }
+      const model = makeKart(racer.config.character, racer.config.kart, racer.id);
+      model.userData.racerId = racer.id;
+      model.position.set(place.x, place.h, 0);
+      model.scale.setScalar(0.85);
+      react(model.userData.rig, 'finish');
+      models.push(model);
+    }
+    batchStatic(this.world);
+    this.world.add(...models);
+    this.podium = { models, camera: new THREE.PerspectiveCamera(36, 1, 0.1, 200) };
   }
 }

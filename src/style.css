@@ -12,6 +12,97 @@
   font-synthesis: none;
   font-weight: 500;
 }
+.minimap {
+  position: absolute;
+  right: 16px;
+  top: 95px;
+  width: 116px;
+  height: 116px;
+  background: #1b354bb5;
+  border: 1px solid #fff5;
+  border-radius: 18px;
+  filter: drop-shadow(0 2px 3px #14283833);
+}
+.map-track {
+  fill: none;
+  stroke: #f6ebd18c;
+  stroke-width: 9;
+  stroke-linejoin: round;
+}
+.minimap circle {
+  stroke: #26394c;
+  stroke-width: 2;
+}
+.minimap text {
+  font: 700 9px system-ui;
+  fill: #142a3e;
+  stroke: none;
+  text-shadow: none;
+}
+.minimap .map-current circle {
+  stroke: #fff5c5;
+  stroke-width: 3;
+}
+.last-lap-banner {
+  position: absolute;
+  left: 50%;
+  top: 23%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #ffe5a0ed;
+  color: #263c4f;
+  border: 2px solid #fff3c4;
+  border-radius: 16px;
+  padding: 12px 20px;
+  font-weight: 900;
+  font-size: clamp(14px, 2vw, 26px);
+  box-shadow: 0 6px 25px #1b34464d;
+  text-shadow: none;
+}
+.last-lap-banner[hidden] {
+  display: none;
+}
+.showing-podium #app {
+  background: transparent;
+}
+.showing-podium .results {
+  background: transparent;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+.results-details {
+  padding: 25px;
+  background: #fcf9eff5;
+  border-radius: 22px;
+}
+#podium-view {
+  height: 290px;
+  width: 100%;
+}
+.showing-podium .winner-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+@media (max-width: 900px), (max-height: 550px) {
+  .minimap {
+    width: 82px;
+    height: 82px;
+    top: 70px;
+    right: 8px;
+    border-radius: 12px;
+  }
+  #podium-view {
+    height: 240px;
+  }
+  .last-lap-banner {
+    padding: 8px 12px;
+    font-size: 15px;
+  }
+  .results-details {
+    padding: 18px;
+  }
+}
 * {
   box-sizing: border-box;
 }
