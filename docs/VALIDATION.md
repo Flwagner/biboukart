@@ -8,7 +8,7 @@ Les tests ne prouvent pas le comportement d'un téléphone physique, d'une manet
 
 ## Résultats automatisés
 
-- `npm test` : **23 tests passent**, dont des simulations réelles de trois tours terminés par six pilotes IA sur chacun des trois circuits.
+- `npm test` : **31 tests passent**, dont des simulations réelles de trois tours terminés par six pilotes IA sur chacun des trois circuits.
 - `npm run build` : TypeScript strict et génération statique réussis ; environ 141 Ko de JavaScript gzip, sans téléchargement d'assets en cours de jeu.
 - `npm run test:e2e` : **6 scénarios passent**.
   - Sélections, conduite avec appui clavier effectif, pause, résultats et revanche.
@@ -54,6 +54,12 @@ E2E_FRAME_DELAY_MS=250 npx playwright test --grep 'four split-screen|gamepad thr
 ```
 
 Les traces et captures sont désormais publiées comme artefacts GitHub Actions en cas d'échec. L'état d'échantillonnage des boutons exposé aux tests reste limité au développement et absent du build de production.
+
+## Régression : sens gauche/droite
+
+Le signe de rotation de la physique était opposé à la convention des commandes : avec l'axe avant `(sin(cap), 0, cos(cap))`, un cap croissant tourne à gauche du pilote. La rotation est corrigée à la source, pour le clavier, les manettes et le tactile. L'IA convertit sa correction de cap dans cette même convention pour conserver sa trajectoire.
+
+Huit tests ajoutés vérifient les signes d'entrée des trois périphériques, le déplacement à gauche/droite dans quatre orientations et la rotation en marche arrière. Les cinq tests de déplacement/rotation échouaient avant le correctif. Le scénario navigateur de conduite vérifie aussi les rotations réelles avec A puis D.
 
 ## Publication
 

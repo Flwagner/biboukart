@@ -15,6 +15,20 @@ function inputHarness() {
   return { input: new Inputs(settings()), events };
 }
 describe('independent controls', () => {
+  it.each(['keyboard', 'pad:0', 'touch'])(
+    'uses negative for left and positive for right on %s',
+    (device) => {
+      const { input } = inputHarness();
+      input.players = [{ character: 0, kart: 0, device }];
+      for (const side of [-1, 1]) {
+        input.clear();
+        if (device === 'keyboard') input.keys.add(side < 0 ? 'KeyA' : 'KeyD');
+        else if (device === 'touch') input.touchState[0][side < 0 ? 'left' : 'right'] = 1;
+        else vi.stubGlobal('navigator', { getGamepads: () => [{ axes: [side, 0], buttons: [] }] });
+        expect(input.read()[0].steer).toBe(side);
+      }
+    },
+  );
   it('isolates shared keyboard profiles and clears held keys on focus loss', () => {
     const { input, events } = inputHarness();
     input.players = [

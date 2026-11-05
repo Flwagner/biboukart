@@ -3,7 +3,7 @@ import { karts, trackDefinitions, type Item, type PlayerConfig } from './config'
 export interface Input {
   throttle: number;
   brake: number;
-  steer: number;
+  steer: number; // -1 = driver-left, +1 = driver-right, for every controller and the AI.
   use: boolean;
 }
 export const idleInput = (): Input => ({ throttle: 0, brake: 0, steer: 0, use: false });
@@ -172,7 +172,8 @@ export class Race {
     return {
       throttle: 1,
       brake: Math.abs(angle) > 0.65 && r.speed > 16 ? 0.65 : 0,
-      steer: THREE.MathUtils.clamp(steer, -1, 1),
+      // Convert signed world-heading correction to the same steering convention as humans.
+      steer: -THREE.MathUtils.clamp(steer, -1, 1),
       use: !!r.item && this.random() < 0.018,
     };
   }
@@ -234,7 +235,8 @@ export class Race {
         r.speed -= dt * (r.speed > 1 ? 25 : spec.acceleration * 0.7) * input.brake;
       if (!input.throttle && !input.brake) r.speed *= Math.exp(-dt * 0.7);
       r.speed = THREE.MathUtils.clamp(r.speed, -7, max);
-      r.heading +=
+      // Forward is (sin(heading), 0, cos(heading)): increasing heading turns left.
+      r.heading -=
         input.steer *
         spec.handling *
         Math.min(1, Math.abs(r.speed) / 9) *

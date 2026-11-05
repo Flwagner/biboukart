@@ -40,6 +40,28 @@ test('full menu → selection → keyboard driving → pause → results → rem
   await expect
     .poll(() => page.evaluate(() => window.__bibou.race.racers[0].speed))
     .toBeGreaterThan(4);
+  const beforeLeft = await page.evaluate(() => window.__bibou.race.racers[0].heading);
+  await page.keyboard.down('a');
+  await expect
+    .poll(() =>
+      page.evaluate((heading) => {
+        const delta = window.__bibou.race.racers[0].heading - heading;
+        return Math.atan2(Math.sin(delta), Math.cos(delta));
+      }, beforeLeft),
+    )
+    .toBeGreaterThan(0.02);
+  await page.keyboard.up('a');
+  const beforeRight = await page.evaluate(() => window.__bibou.race.racers[0].heading);
+  await page.keyboard.down('d');
+  await expect
+    .poll(() =>
+      page.evaluate((heading) => {
+        const delta = heading - window.__bibou.race.racers[0].heading;
+        return Math.atan2(Math.sin(delta), Math.cos(delta));
+      }, beforeRight),
+    )
+    .toBeGreaterThan(0.02);
+  await page.keyboard.up('d');
   await page.keyboard.up('w');
   await page.keyboard.press('Escape');
   await expect(page.locator('#resume')).toBeVisible();

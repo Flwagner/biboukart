@@ -5,6 +5,35 @@ function tick(race: Race, seconds: number) {
   for (let i = 0; i < seconds * 60; i++) race.update(1 / 60, [idleInput()]);
 }
 describe('arcade simulation', () => {
+  it.each([0, Math.PI / 2, Math.PI, -Math.PI / 2])(
+    'steers left and right relative to the driver at heading %f',
+    (heading) => {
+      for (const steer of [-1, 1]) {
+        const race = new Race(0, [player]);
+        race.countdown = 0;
+        const racer = race.racers[0];
+        racer.pos.copy(race.track.at(0.5));
+        racer.heading = heading;
+        racer.speed = 10;
+        const previous = racer.pos.clone();
+        race.update(1 / 60, [{ ...idleInput(), steer }]);
+        const displacement = racer.pos.clone().sub(previous);
+        // Driver-right is forward × world-up, not the positive world-X axis.
+        const rightward = -Math.cos(heading) * displacement.x + Math.sin(heading) * displacement.z;
+        expect(rightward * steer).toBeGreaterThan(0);
+      }
+    },
+  );
+  it('reverses steering yaw when driving backwards', () => {
+    const race = new Race(0, [player]);
+    race.countdown = 0;
+    const racer = race.racers[0];
+    racer.pos.copy(race.track.at(0.5));
+    racer.heading = 0;
+    racer.speed = -5;
+    race.update(1 / 60, [{ ...idleInput(), steer: 1 }]);
+    expect(racer.heading).toBeGreaterThan(0);
+  });
   it('creates six racers and a closed track', () => {
     const r = new Race(0, [player]);
     expect(r.racers).toHaveLength(6);
