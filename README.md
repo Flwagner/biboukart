@@ -92,7 +92,7 @@ Un état de simulation commun est rendu depuis une caméra par humain. La piste 
 
 La graine d'attribution des objets est déterministe. Les bots utilisent les mêmes limites physiques, collisions et règles d'objets que les humains. La difficulté change leur vitesse visée (70 %, 89 %, 100 % de la vitesse du kart), l'anticipation, la fréquence d'utilisation des objets et la prise des raccourcis, sans sur-vitesse cachée ou rattrapage artificiel. Le solo reste une course, pas un mode contre-la-montre.
 
-Les panneaux jaunes annoncent les obstacles mobiles : un contact ralentit brièvement et peut être bloqué par un bouclier. Les raccourcis figurent en pointillés jaunes sur la carte ; ils sont moins larges et leurs bas-côtés ralentissent fortement. Les checkpoints restent ordonnés, même en passant par une branche. Un kart repositionné revient sur sa route sans gagner de progression.
+Les panneaux jaunes annoncent les obstacles mobiles : un contact ralentit brièvement et peut être bloqué par un bouclier. Les raccourcis sont des routes secondaires asphaltées, sans piquets ni portiques, et figurent en pointillés clairs sur la carte ; ils sont moins larges et leurs bas-côtés ralentissent fortement. Le jaune au sol est réservé aux bandes turbo. Les checkpoints restent ordonnés, même en passant par une branche. Un kart repositionné revient sur sa route sans gagner de progression.
 
 Les réglages et sélections sont sauvegardés localement, sans données envoyées à un serveur. Les contrôleurs sont réattribués par session car leur indice matériel n'est pas une identité stable. Le jeu continue si le stockage est bloqué.
 

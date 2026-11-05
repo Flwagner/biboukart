@@ -19,7 +19,7 @@ Le podium utilise le même contexte WebGL, dans un viewport intégré aux résul
 - Canyon : arches rocheuses et cactus ; rocher mobile roulant.
 - Archipel : palmiers, cabanes sur pilotis ; crabe traversant la piste.
 - Relief continu et léger dévers. Position, inclinaison, caméras, cadeaux, turbos et projectiles suivent la hauteur de la route. Les karts restent contraints au sol, sans saut.
-- Un raccourci étroit par circuit, tracé en jaune sur la mini-carte, signalé par des portiques et récompensé par une bande turbo. Les bas-côtés pénalisent une trajectoire imprécise.
+- Un raccourci étroit par circuit, récompensé par une bande turbo. Après retour utilisateur, son revêtement est identique à la route principale, les piquets et portiques sont supprimés et son tracé sur la mini-carte est neutre. Le jaune au sol est réservé aux turbos. Les bas-côtés pénalisent une trajectoire imprécise.
 - Projection continue des deux routes vers la progression de course. Checkpoints ordonnés, contrôle des déplacements impossibles et repositionnement sur la branche courante sans gain de progression.
 - Bots suivant la courbure réelle des routes (pure pursuit), capables de prendre les raccourcis et de contourner les obstacles sans téléportation.
 

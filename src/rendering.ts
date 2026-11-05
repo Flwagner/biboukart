@@ -317,20 +317,13 @@ export class Renderer {
           true,
         );
     }
-    ribbon(
-      -track.shortcut.width / 2,
-      track.shortcut.width / 2,
-      0.025,
-      () =>
-        new THREE.Color(track.index === 0 ? '#a9a47b' : track.index === 1 ? '#a47b61' : '#d8ba7d'),
-      'shortcut',
-    );
+    ribbon(-track.shortcut.width / 2, track.shortcut.width / 2, 0.025, () => roadColor, 'shortcut');
     for (const side of [-1, 1])
       ribbon(
         (side * track.shortcut.width) / 2,
         side * (track.shortcut.width / 2 + 0.25),
         0.04,
-        () => new THREE.Color('#f8cc77'),
+        () => new THREE.Color('#d6d5c5'),
         'shortcut',
       );
     for (const side of [-1, 1])
@@ -474,26 +467,6 @@ export class Renderer {
     const decor = scenery(track);
     this.world.add(decor.group);
     this.animatedScenery = decor.moving;
-    // Yellow gate and posts explicitly mark the optional narrow route.
-    for (const u of [0, 0.15, 0.45, 0.75, 1]) {
-      const p = track.routeAt('shortcut', u),
-        tan = track.routeTangent('shortcut', u),
-        gate = new THREE.Group();
-      gate.position.copy(p);
-      gate.rotation.y = Math.atan2(tan.x, tan.z);
-      for (const side of [-1, 1])
-        block(
-          gate,
-          '#f6cc73',
-          [0.18, 1.4, 0.18],
-          [side * (track.shortcut.width / 2 + 0.5), 0.7, 0],
-        );
-      if (u === 0) {
-        block(gate, '#354b50', [track.shortcut.width + 1.2, 0.6, 0.2], [0, 2.5, 0]);
-        for (const x of [-1, 0, 1]) block(gate, '#f5d58b', [0.3, 0.3, 0.24], [x, 2.5, 0.02]);
-      }
-      this.world.add(gate);
-    }
     const obstacle = track.createObstacle();
     const branchBoost = new THREE.Group(),
       branchPoint = track.routeAt('shortcut', 0.5),

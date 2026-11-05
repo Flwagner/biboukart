@@ -194,7 +194,7 @@ function tracks() {
   };
   $('.tracks').insertAdjacentHTML(
     'beforeend',
-    '<p class="notice">⚠ Les panneaux jaunes annoncent les obstacles mobiles. Les passages étroits bordés de jaune sont des raccourcis : un turbo y récompense une trajectoire précise, mais leurs bas-côtés ralentissent fortement.</p>',
+    '<p class="notice">⚠ Les panneaux jaunes annoncent les obstacles mobiles. Les routes secondaires plus étroites sont des raccourcis : leurs bas-côtés ralentissent fortement. Les bandes jaunes au sol indiquent uniquement les turbos.</p>',
   );
 }
 function help() {
