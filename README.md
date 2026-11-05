@@ -1,1 +1,107 @@
-# biboukart
+# BibouKart 🏁
+
+Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three.js + TypeScript + Vite**, sans backend, sans compte, sans installation pour les joueurs.
+
+## Jouer
+
+- **PC : 1 à 4 humains** sur un même appareil, clavier partagé et/ou manettes.
+- **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
+- 4 personnages, 4 karts aux caractéristiques différentes, 3 circuits.
+- Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
+- Boîtes cadeaux : missile guidé, turbo, bouclier, piège. Bandes de turbo sur la route.
+- Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
+
+Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Après l'arrivée du premier humain, les autres disposent de 45 secondes ; la course se termine plus tôt si tous les humains sont arrivés.
+
+### Commandes par défaut
+
+| Action            | Clavier J1 | Clavier J2 | Manette standard |
+| ----------------- | ---------- | ---------- | ---------------- |
+| Accélérer         | W          | ↑          | RT ou A          |
+| Freiner / reculer | S          | ↓          | LT ou B          |
+| Tourner           | A / D      | ← / →      | Stick gauche     |
+| Objet             | Espace     | Entrée     | X                |
+| Pause / reprendre | Échap      | Échap      | Start            |
+
+Touches **physiques** modifiables dans les réglages : sur AZERTY, remapper W/A en Z/Q si souhaité. Profils 3 et 4 : I/K/J/L/O et pavé numérique 8/5/4/6/0. Plusieurs touches simultanées peuvent être bloquées par certains claviers : privilégier les manettes à 3–4 joueurs.
+
+Au tactile, chaque moitié d'écran possède direction, accélérateur, frein et objet. Maintenir frein à l'arrêt pour reculer. Le changement d'application ou la perte de focus met la course en pause. Une manette déconnectée peut être réattribuée depuis la pause.
+
+La pause propose le plein écran lorsque le navigateur le permet ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus. Dans les menus à la manette : haut/bas pour naviguer, gauche/droite pour modifier une liste, A pour valider.
+
+## Développement
+
+**Node.js 22.12+ et npm** sont nécessaires uniquement pour développer/construire le projet.
+
+```sh
+npm ci
+npm run dev
+```
+
+Ouvrir l'adresse affichée par Vite. Pour tester sur téléphone, servir depuis une origine HTTPS ou un contexte local compatible ; la Gamepad API nécessite un contexte sécurisé selon le navigateur.
+
+```sh
+npm test               # tests unitaires de simulation, stockage et contrôles
+npm run typecheck      # TypeScript strict
+npm run build          # build statique dans dist/
+npm run preview        # prévisualiser ce build
+npx playwright install chromium
+npm run test:e2e       # scénarios Chromium desktop et mobile émulé
+npm run test:static    # après build : vrai serveur statique sous /biboukart/
+npm run benchmark      # serveur dev lancé : mesure du rendu logiciel, non contractuelle
+npm run format:check   # cohérence du formatage
+```
+
+Ne pas ouvrir `dist/index.html` avec `file://` : servir `dist/` via HTTP(S).
+
+## GitHub Pages
+
+Le workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) valide les tests unitaires et navigateur, construit et teste le site sous un sous-chemin, puis déploie l'artefact `dist/` sur les pushs vers `main` ou `master`. Les pull requests ne déploient pas.
+
+1. Publier les fichiers de ce projet sur le dépôt GitHub.
+2. Dans **Settings → Pages → Build and deployment → Source**, choisir **GitHub Actions**.
+3. Pousser sur la branche principale ou déclencher le workflow manuellement.
+4. Consulter l'URL dans l'environnement `github-pages`. Pour le dépôt actuel : `https://flwagner.github.io/biboukart/` une fois le déploiement réussi.
+
+La base Vite est relative (`./`) : aucune route serveur, aucun service externe et aucun chemin absolu d'asset ne sont nécessaires. Le site fonctionne aussi sur un autre hébergement statique. **Aucune publication distante n'a été effectuée par cette implémentation.**
+
+## Architecture
+
+| Fichier            | Responsabilité                                                         |
+| ------------------ | ---------------------------------------------------------------------- |
+| `src/config.ts`    | Personnages, karts, pistes, objets et paramètres validés               |
+| `src/race.ts`      | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets   |
+| `src/rendering.ts` | Monde procédural, karts, caméras, unique renderer et viewports/scissor |
+| `src/input.ts`     | Clavier, manettes, multitouch et isolation des joueurs                 |
+| `src/main.ts`      | Écrans, HUD, orchestration de la partie et boucle principale           |
+| `src/audio.ts`     | Synthèse sonore Web Audio, activation après interaction                |
+| `src/storage.ts`   | Dernières sélections ; tolérance au stockage indisponible              |
+| `src/style.css`    | Interface française adaptative et commandes tactiles                   |
+
+Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de physique réaliste, drift, sauts ou routes superposées. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
+
+La graine d'attribution des objets est déterministe. Les bots utilisent la même vitesse, la même physique et les mêmes règles d'objets que les humains. Le solo reste une course, pas un mode contre-la-montre.
+
+Les réglages et sélections sont sauvegardés localement, sans données envoyées à un serveur. Les contrôleurs sont réattribués par session car leur indice matériel n'est pas une identité stable. Le jeu continue si le stockage est bloqué.
+
+## Performance et compatibilité
+
+- Cible : navigateurs récents disposant de **WebGL2**, accélération graphique et JavaScript activés.
+- Géométrie low-poly regroupée par matériau, végétation instanciée, matériaux partagés, ombres simplifiées, réutilisation des effets.
+- Un seul contexte WebGL, simulation à pas fixe avec rattrapage plafonné, interpolation des positions et HUD actualisé à fréquence limitée.
+- Qualité adaptative : plafonnement du pixel ratio, résolution ajustée avec hystérésis et réduction initiale à 3–4 vues. Réglages basse/moyenne/haute disponibles.
+- Objectifs : 60 fps solo PC et 30 fps en écran partagé/mobile sur matériel adapté, **pas une garantie sur tous les appareils**.
+- Safari iOS, téléphones réels, chauffe prolongée, manettes physiques et limites de clavier restent à confirmer sur ces appareils. L'émulation mobile et les manettes synthétiques ne constituent pas une certification matérielle.
+- Aucun fonctionnement hors-ligne garanti : les fichiers doivent d'abord être chargés depuis l'hébergement. Pas de service worker/PWA.
+
+## Vérifications de livraison
+
+Les commandes ci-dessus sont reproductibles. Voir [`docs/VALIDATION.md`](docs/VALIDATION.md) pour les résultats observés et leurs limites.
+
+Les interfaces de test `window.__bibou` existent **uniquement en développement**. Elles sont supprimées du build de production, ce que le test statique vérifie.
+
+## Ressources et crédits
+
+Modèles, circuits et décorations : géométrie procédurale originale incluse dans les sources. Sons : synthèse Web Audio originale. Polices : pile système locale. Émojis : rendu du système/navigateur. Aucun asset Nintendo, CDN, modèle ou fichier audio tiers téléchargé à l'exécution.
+
+Dépendances principales : [Three.js](https://threejs.org/) (MIT), [Vite](https://vite.dev/) (MIT), [TypeScript](https://www.typescriptlang.org/) (Apache-2.0), [Vitest](https://vitest.dev/) (MIT), [Playwright](https://playwright.dev/) (Apache-2.0), [Prettier](https://prettier.io/) (MIT). Leurs licences sont conservées dans les packages distribués par npm.

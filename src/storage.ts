@@ -1,0 +1,55 @@
+import type { PlayerConfig } from './config';
+export interface Selection {
+  count: number;
+  track: number;
+  players: PlayerConfig[];
+}
+export function loadSelection(): Selection | null {
+  try {
+    const s = JSON.parse(localStorage.getItem('biboukart-selection-v1') || 'null');
+    if (
+      !s ||
+      !Number.isInteger(s.count) ||
+      s.count < 1 ||
+      s.count > 4 ||
+      !Number.isInteger(s.track) ||
+      s.track < 0 ||
+      s.track > 2 ||
+      !Array.isArray(s.players) ||
+      s.players.length !== 4
+    )
+      return null;
+    if (
+      !s.players.every(
+        (p: PlayerConfig) =>
+          p &&
+          Number.isInteger(p.character) &&
+          p.character >= 0 &&
+          p.character < 4 &&
+          Number.isInteger(p.kart) &&
+          p.kart >= 0 &&
+          p.kart < 4,
+      )
+    )
+      return null;
+    // Hardware indices are not persistent identities; controllers are reassigned per session.
+    return {
+      count: s.count,
+      track: s.track,
+      players: s.players.map((p: PlayerConfig) => ({
+        character: p.character,
+        kart: p.kart,
+        device: matchMedia('(pointer: coarse)').matches ? 'touch' : 'keyboard',
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+export function saveSelection(selection: Selection) {
+  try {
+    localStorage.setItem('biboukart-selection-v1', JSON.stringify(selection));
+  } catch {
+    /* Optional persistence. */
+  }
+}
