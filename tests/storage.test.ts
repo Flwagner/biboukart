@@ -3,6 +3,14 @@ import { loadSettings, saveSettings, defaultBindings } from '../src/config';
 import { loadSelection, saveSelection } from '../src/storage';
 afterEach(() => vi.unstubAllGlobals());
 describe('resilient local settings', () => {
+  it('migrates existing settings with independent music and effects levels', () => {
+    vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ volume: 0.2 }) });
+    expect(loadSettings()).toMatchObject({ volume: 0.2, musicVolume: 0.55, effectsVolume: 0.8 });
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({ musicVolume: -4, effectsVolume: 3 }),
+    });
+    expect(loadSettings()).toMatchObject({ musicVolume: 0, effectsVolume: 1 });
+  });
   it('rejects corrupted key codes instead of interpolating them into menus', () => {
     vi.stubGlobal('localStorage', {
       getItem: () =>

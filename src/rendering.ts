@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { characters, karts, trackDefinitions } from './config';
 import { Race, Track } from './race';
+import { RaceEffects } from './effects';
 const mat = (color: THREE.ColorRepresentation) =>
   new THREE.MeshLambertMaterial({ color, flatShading: true });
 const materialCache = new Map<string, THREE.Material>();
@@ -153,6 +154,7 @@ export class Renderer {
   hazardMeshes: THREE.Mesh[] = [];
   track: Track;
   race: Race | null = null;
+  effects: RaceEffects | null = null;
   width = innerWidth;
   height = innerHeight;
   time = 0;
@@ -194,6 +196,8 @@ export class Renderer {
     this.resize();
   }
   clearWorld() {
+    this.effects?.dispose();
+    this.effects = null;
     this.world.traverse((o) => {
       if (o instanceof THREE.InstancedMesh) o.dispose();
       if (o instanceof THREE.Mesh && ![box, sphere, wheel].includes(o.geometry))
@@ -429,6 +433,8 @@ export class Renderer {
       this.world.add(g);
       this.pickupMeshes.push(g);
     }
+    this.effects = new RaceEffects(race.racers.length);
+    this.world.add(this.effects.root);
     this.resolution =
       this.quality === 'low' || race.racers.filter((r) => r.human).length > 2
         ? 0.8
@@ -437,7 +443,7 @@ export class Renderer {
           : 1;
     this.resize();
   }
-  render(dt: number, alpha: number) {
+  render(dt: number, alpha: number, effectsDt = dt) {
     this.time += dt;
     this.frameTime += dt;
     this.frameCount++;
@@ -462,6 +468,7 @@ export class Renderer {
     }
     const race = this.race;
     if (race) {
+      this.effects?.update(effectsDt, race.racers, this.reduced);
       for (const r of race.racers) {
         const g = this.kartMeshes[r.id];
         g.position.lerpVectors(r.previous, r.pos, alpha);
@@ -523,6 +530,8 @@ export class Renderer {
           );
         camera.position.lerp(target, 1 - Math.exp(-dt * 7));
         camera.lookAt(r.pos.x + Math.sin(r.heading) * 6, 1, r.pos.z + Math.cos(r.heading) * 6);
+        const targetFov = r.boost > 0 && !r.finished && !this.reduced ? 71 : 64;
+        camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-effectsDt * 5));
       }
       camera.aspect = v.w / v.h;
       camera.updateProjectionMatrix();

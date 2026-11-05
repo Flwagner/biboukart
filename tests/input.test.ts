@@ -3,6 +3,8 @@ import { Inputs } from '../src/input';
 import { defaultBindings } from '../src/config';
 const settings = () => ({
   volume: 0.3,
+  musicVolume: 0.55,
+  effectsVolume: 0.8,
   quality: 'auto',
   reduced: false,
   bindings: defaultBindings.map((b) => [...b]),

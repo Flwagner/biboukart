@@ -204,6 +204,64 @@ test('gamepad throttle, Start pause/resume and disconnect recovery', async ({ pa
   await page.locator('#confirm').click();
   await expect(page.locator('#resume')).not.toBeVisible();
 });
+test('turbo and gift feedback follows actual pickups, expires and respects reduced effects', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.locator('#play').click();
+  await page.locator('#next').click();
+  await page.locator('#start').click();
+  await page.evaluate(() => {
+    const { race } = window.__bibou,
+      racer = race.racers[0];
+    race.countdown = 0;
+    race.elapsed = 5;
+    racer.pos.copy(race.pickups[0].pos);
+    racer.previous.copy(racer.pos);
+    race.update(1 / 60, []);
+    window.__bibou.renderer.effects.update(0.2, race.racers, false);
+  });
+  await expect(page.locator('#hud-0')).toHaveClass(/collecting/);
+  await page.locator('#pause').click();
+  await expect
+    .poll(() => page.evaluate(() => window.__bibou.renderer.effects.stars.visible))
+    .toBe(true);
+  expect(await page.evaluate(() => !!window.__bibou.race.racers[0].item)).toBe(true);
+  await page.screenshot({
+    path: 'test-results/gift-effect.png',
+    style: '#app { visibility: hidden; }',
+  });
+  await page.evaluate(() => {
+    const { race, renderer } = window.__bibou,
+      racer = race.racers[0];
+    renderer.effects.update(1.1, race.racers, false);
+    racer.pos.copy(race.track.at(race.boosts[0]));
+    racer.previous.copy(racer.pos);
+    const tangent = race.track.tangent(race.boosts[0]);
+    racer.heading = Math.atan2(tangent.x, tangent.z);
+    race.update(1 / 60, []);
+  });
+  await page.locator('#resume').click();
+  await expect(page.locator('#hud-0')).toHaveClass(/boosting/);
+  await page.locator('#pause').click();
+  await expect
+    .poll(() => page.evaluate(() => window.__bibou.renderer.effects.karts[0].trail.visible))
+    .toBe(true);
+  expect(await page.evaluate(() => window.__bibou.renderer.effects.stars.visible)).toBe(false);
+  await page.screenshot({
+    path: 'test-results/turbo-effect.png',
+    style: '#app { visibility: hidden; }',
+  });
+  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+  await expect
+    .poll(() => page.evaluate(() => window.__bibou.renderer.effects.karts[0].trail.visible))
+    .toBe(false);
+  expect(await page.evaluate(() => window.__bibou.renderer.effects.karts[0].ring.visible)).toBe(
+    true,
+  );
+  await page.locator('#quit').click();
+  expect(await page.evaluate(() => window.__bibou.renderer.effects)).toBeNull();
+});
 test.describe('mobile landscape', () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   test('two touch players, simultaneous pointers, rotation and interruption', async ({ page }) => {

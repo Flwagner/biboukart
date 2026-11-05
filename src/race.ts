@@ -93,7 +93,7 @@ export class Race {
   finished = false;
   finishDeadline = Infinity;
   seed = 12345;
-  onEvent: (kind: string, racer: number) => void = () => {};
+  onEvent: (kind: string, racer: number, item?: Item) => void = () => {};
   constructor(track: number, players: PlayerConfig[]) {
     this.track = new Track(track);
     for (let i = 0; i < 6; i++) {
@@ -182,6 +182,7 @@ export class Race {
     if (r.shield > 0) {
       r.shield = 0;
       r.immune = 1;
+      this.onEvent('block', r.id);
       return;
     }
     r.slow = 1.3;
@@ -194,7 +195,7 @@ export class Race {
     const item = r.item;
     r.item = null;
     r.itemCooldown = 0.4;
-    this.onEvent('item', r.id);
+    this.onEvent('item', r.id, item);
     if (item === 'turbo') r.boost = Math.min(4, r.boost + 2.2);
     if (item === 'shield') r.shield = 7;
     if (item === 'missile' || item === 'trap') {
@@ -211,7 +212,11 @@ export class Race {
   update(dt: number, inputs: Input[]) {
     if (this.finished) return;
     if (this.countdown > 0) {
+      const previous = Math.ceil(Math.max(0, this.countdown - 0.5));
       this.countdown = Math.max(0, this.countdown - dt);
+      const current = Math.ceil(Math.max(0, this.countdown - 0.5));
+      if (current > 0 && current < previous) this.onEvent('countdown', -1);
+      if (this.countdown === 0) this.onEvent('go', -1);
       return;
     }
     this.elapsed += dt;

@@ -9,6 +9,8 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 - 4 personnages, 4 karts aux caractéristiques différentes, 3 circuits.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
 - Boîtes cadeaux : missile guidé, turbo, bouclier, piège. Bandes de turbo sur la route.
+- Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Variante discrète avec les animations réduites.
+- Musique originale en boucle (8 mesures, 116 BPM), basse, mélodie et percussions ; sons distincts de cadeaux, pouvoirs, collisions, départ et arrivée. Volumes général/musique/effets indépendants.
 - Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
 
 Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Après l'arrivée du premier humain, les autres disposent de 45 secondes ; la course se termine plus tôt si tous les humains sont arrivés.
@@ -67,16 +69,18 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 
 ## Architecture
 
-| Fichier            | Responsabilité                                                         |
-| ------------------ | ---------------------------------------------------------------------- |
-| `src/config.ts`    | Personnages, karts, pistes, objets et paramètres validés               |
-| `src/race.ts`      | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets   |
-| `src/rendering.ts` | Monde procédural, karts, caméras, unique renderer et viewports/scissor |
-| `src/input.ts`     | Clavier, manettes, multitouch et isolation des joueurs                 |
-| `src/main.ts`      | Écrans, HUD, orchestration de la partie et boucle principale           |
-| `src/audio.ts`     | Synthèse sonore Web Audio, activation après interaction                |
-| `src/storage.ts`   | Dernières sélections ; tolérance au stockage indisponible              |
-| `src/style.css`    | Interface française adaptative et commandes tactiles                   |
+| Fichier                                           | Responsabilité                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/config.ts`                                   | Personnages, karts, pistes, objets et paramètres validés                        |
+| `src/race.ts`                                     | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets            |
+| `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor          |
+| `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU |
+| `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                          |
+| `src/main.ts`                                     | Écrans, HUD, orchestration de la partie et boucle principale                    |
+| `src/audio.ts`                                    | Mixage Web Audio, moteur, activation après interaction et pause                 |
+| `src/music.ts` / `src/synth.ts` / `src/sounds.ts` | Composition originale et synthèse des instruments et bruitages                  |
+| `src/storage.ts`                                  | Dernières sélections ; tolérance au stockage indisponible                       |
+| `src/style.css`                                   | Interface française adaptative et commandes tactiles                            |
 
 Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de physique réaliste, drift, sauts ou routes superposées. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
 

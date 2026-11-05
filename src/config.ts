@@ -111,6 +111,8 @@ export interface PlayerConfig {
 }
 export interface Settings {
   volume: number;
+  musicVolume: number;
+  effectsVolume: number;
   quality: string;
   reduced: boolean;
   bindings: string[][];
@@ -126,6 +128,10 @@ export function loadSettings(): Settings {
     const s = JSON.parse(localStorage.getItem('biboukart-v1') || '{}');
     return {
       volume: typeof s.volume === 'number' ? Math.max(0, Math.min(1, s.volume)) : 0.3,
+      musicVolume:
+        typeof s.musicVolume === 'number' ? Math.max(0, Math.min(1, s.musicVolume)) : 0.55,
+      effectsVolume:
+        typeof s.effectsVolume === 'number' ? Math.max(0, Math.min(1, s.effectsVolume)) : 0.8,
       quality: ['auto', 'low', 'medium', 'high'].includes(s.quality) ? s.quality : 'auto',
       reduced: !!s.reduced,
       bindings:
@@ -143,6 +149,8 @@ export function loadSettings(): Settings {
   } catch {
     return {
       volume: 0.3,
+      musicVolume: 0.55,
+      effectsVolume: 0.8,
       quality: 'auto',
       reduced: false,
       bindings: defaultBindings.map((b) => [...b]),

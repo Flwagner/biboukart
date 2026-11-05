@@ -21,6 +21,13 @@ const settings = loadSettings(),
   inputs = new Inputs(settings),
   audio = new Audio();
 audio.volume = settings.volume;
+audio.musicVolume = settings.musicVolume;
+audio.effectsVolume = settings.effectsVolume;
+addEventListener('pointerdown', () => void audio.unlock(), { once: true });
+addEventListener('keydown', () => void audio.unlock(), { once: true });
+addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('button')) audio.play('click');
+});
 let renderer: Renderer;
 try {
   renderer = new Renderer(document.querySelector<HTMLCanvasElement>('#game')!);
@@ -67,6 +74,7 @@ function common() {
     home();
   });
   $('#sound')?.addEventListener('click', () => {
+    void audio.unlock();
     settings.volume = settings.volume ? 0 : 0.3;
     audio.volume = settings.volume;
     saveSettings(settings);
@@ -74,6 +82,7 @@ function common() {
   });
 }
 function home() {
+  audio.setPaused(document.hidden);
   screen = 'home';
   race = null;
   inputs.players = [];
@@ -178,7 +187,7 @@ function help() {
 function options() {
   screen = 'settings';
   app.innerHTML = shell(
-    `<section class="panel options"><span class="eyebrow">VOTRE TERRAIN DE JEU</span><h1>Les petits réglages.</h1><div class="settings-grid"><label>Volume <input id="volume" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></label><label>Qualité graphique<select id="quality">${[
+    `<section class="panel options"><span class="eyebrow">VOTRE TERRAIN DE JEU</span><h1>Les petits réglages.</h1><div class="settings-grid"><label>Volume général <input id="volume" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></label><label>Musique d'ambiance <input id="music-volume" type="range" min="0" max="1" step="0.05" value="${settings.musicVolume}"></label><label>Effets sonores <input id="effects-volume" type="range" min="0" max="1" step="0.05" value="${settings.effectsVolume}"></label><label>Qualité graphique<select id="quality">${[
       ['auto', 'Adaptative (conseillée)'],
       ['low', 'Basse'],
       ['medium', 'Moyenne'],
@@ -196,6 +205,14 @@ function options() {
   $('#volume').oninput = (e) => {
     settings.volume = Number((e.target as HTMLInputElement).value);
     audio.volume = settings.volume;
+  };
+  $('#music-volume').oninput = (e) => {
+    settings.musicVolume = Number((e.target as HTMLInputElement).value);
+    audio.musicVolume = settings.musicVolume;
+  };
+  $('#effects-volume').oninput = (e) => {
+    settings.effectsVolume = Number((e.target as HTMLInputElement).value);
+    audio.effectsVolume = settings.effectsVolume;
   };
   $('#quality').onchange = (e) => {
     settings.quality = (e.target as HTMLSelectElement).value;
@@ -233,6 +250,7 @@ function keyLabel(code: string) {
     .replace('Space', 'Espace');
 }
 function start() {
+  audio.setPaused(document.hidden);
   saveSelection({ count: playerCount, track: selectedTrack, players });
   void audio.unlock();
   screen = 'race';
@@ -245,12 +263,15 @@ function start() {
   renderer.start(race);
   app.innerHTML = '';
   document.body.classList.add('racing');
-  race.onEvent = (kind, id) => {
+  audio.play('countdown');
+  race.onEvent = (kind, id, item) => {
+    if (kind === 'pickup' && race) renderer.effects?.pickup(id, race.racers[id].pos);
+    if (id < 0) {
+      audio.play(kind);
+      return;
+    }
     if (!race?.racers[id].human) return;
-    audio.tone(
-      kind === 'pickup' ? 760 : kind === 'hit' ? 130 : kind === 'finish' ? 1040 : 480,
-      0.18,
-    );
+    audio.play(kind, item);
   };
   buildHUD();
   startTime = performance.now();
@@ -295,6 +316,8 @@ function updateHUD() {
               ? 'GO !'
               : '';
     el.classList.toggle('boosting', r.boost > 0 && !settings.reduced);
+    el.classList.toggle('collecting', renderer.effects?.isCollecting(i) ?? false);
+    el.classList.toggle('reduced-effects', settings.reduced);
   }
   const clock = hud.querySelector('#race-clock');
   if (clock)
@@ -305,6 +328,7 @@ function updateHUD() {
 function pause(message = 'On reprend son souffle ?') {
   if (!race || race.finished || screen !== 'race') return;
   paused = true;
+  audio.setPaused(true);
   inputs.clear();
   app.innerHTML = `<div class="overlay"><section class="panel pause-panel"><span class="eyebrow">PAUSE AU STAND</span><h1>${message}</h1><p>Tout le monde vous attend.</p>${button('Reprendre →', 'resume', 'primary')}${button('Recommencer', 'restart', 'secondary')}${button('Changer les contrôleurs', 'controllers', 'secondary')}${document.fullscreenEnabled ? button(document.fullscreenElement ? 'Quitter le plein écran' : 'Plein écran', 'fullscreen', 'secondary') : ''}${button('Quitter la course', 'quit', 'text-button')}<p id="fullscreen-status" role="status"></p></section></div>`;
   $('#resume').onclick = () => resume();
@@ -362,6 +386,7 @@ function controllerDialog() {
 function resume() {
   if (!race) return;
   paused = false;
+  audio.setPaused(document.hidden);
   inputs.clear();
   pendingUse = [];
   app.innerHTML = '';
@@ -385,9 +410,14 @@ document.querySelector('#game')!.addEventListener('webglcontextlost', (event) =>
 document.querySelector('#game')!.addEventListener('webglcontextrestored', () => {
   pause('Le moteur est prêt à repartir.');
 });
-addEventListener('blur', () => pause());
+addEventListener('blur', () => {
+  pause();
+  audio.setPaused(true);
+});
+addEventListener('focus', () => audio.setPaused(paused || document.hidden));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) pause();
+  audio.setPaused(paused || document.hidden);
 });
 addEventListener('gamepadconnected', () => {
   if (screen === 'setup') setup();
@@ -405,7 +435,7 @@ function results() {
   hud.innerHTML = '';
   document.body.classList.remove('racing');
   const winner = race.ranking[0];
-  audio.tone(880, 0.6);
+  audio.play('finish');
   app.innerHTML = shell(
     `<section class="panel results"><span class="eyebrow">LE DRAPEAU EST TOMBÉ</span><div class="winner-icon">${characters[winner.config.character].icon}</div><h1>${characters[winner.config.character].name} remporte la course !</h1><p>${trackDefinitions[selectedTrack].name} · 3 tours de pur bonheur</p><div class="leaderboard">${race.ranking.map((r, i) => `<div class="${r.human ? 'human' : ''}"><span class="rank">${i + 1}</span><span>${characters[r.config.character].icon} ${characters[r.config.character].name} <small>${r.human ? 'J' + (r.id + 1) : 'BOT'}</small></span><span>${r.finished ? formatTime(r.finishTime) : `${Math.min(3, r.lap + 1)}e tour`}</span></div>`).join('')}</div><div class="panel-actions">${button('← Accueil', 'home', 'secondary')}${button('Changer de circuit', 'circuits', 'secondary')}${button('La revanche ! ↗', 'again', 'primary')}</div></section>`,
     'LE PODIUM',
@@ -491,7 +521,11 @@ function frame(now: number) {
       hudTime = 0;
     }
   }
-  renderer.render(dt, race && screen === 'race' && !paused ? Math.min(1, accumulator * 60) : 1);
+  renderer.render(
+    dt,
+    race && screen === 'race' && !paused ? Math.min(1, accumulator * 60) : 1,
+    screen === 'race' && !paused ? dt : 0,
+  );
   audio.update(
     race?.racers[0].speed ?? 0,
     screen === 'race' && !paused && !!race && race.countdown === 0,
@@ -507,6 +541,9 @@ if (import.meta.env.DEV) {
       },
       get renderer() {
         return renderer;
+      },
+      get audio() {
+        return audio;
       },
       start: (count = 1, track = 0) => {
         playerCount = count;
