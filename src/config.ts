@@ -191,8 +191,22 @@ export const trackDefinitions = [
     ],
   },
 ];
-export const itemNames = { missile: 'Missile', turbo: 'Turbo', shield: 'Bouclier', trap: 'Piège' };
-export const itemIcons = { missile: '🚀', turbo: '⚡', shield: '🛡️', trap: '🟣' };
+export const itemNames = {
+  missile: 'Missile',
+  turbo: 'Turbo',
+  shield: 'Bouclier',
+  trap: 'Flaque',
+  giant: 'Géant',
+  shockwave: 'Onde de choc',
+};
+export const itemIcons = {
+  missile: '🚀',
+  turbo: '⚡',
+  shield: '🛡️',
+  trap: '🛢️',
+  giant: '🍄',
+  shockwave: '💥',
+};
 export type Item = keyof typeof itemNames;
 export interface PlayerConfig {
   character: number;

@@ -3,18 +3,24 @@ import { Race, idleInput } from '../src/race';
 import { karts, difficulties, type Difficulty } from '../src/config';
 const player = { character: 0, kart: 0, device: 'keyboard' };
 const matrix = (['easy', 'normal', 'hard'] as Difficulty[]).flatMap((difficulty) =>
-  [0, 1, 2].flatMap((track) =>
+  [0, 1, 2, 3, 4].flatMap((track) =>
     [false, true].map((shortcuts) => ({ difficulty, track, shortcuts })),
   ),
 );
 describe('fair and adjustable bot difficulty', () => {
   it.each(matrix)(
-    '$difficulty / track $track / shortcuts $shortcuts: all six finish without recovery or illegal speeds',
+    '$difficulty / track $track / shortcuts $shortcuts: all six finish without unintended recovery or illegal speeds',
     ({ difficulty, track, shortcuts }) => {
       const race = new Race(track, [player], difficulty);
       race.racers.forEach((r) => (r.human = true));
       race.countdown = 0;
-      const respawn = vi.spyOn(race, 'respawn');
+      const recoveries: boolean[] = [];
+      const respawn = race.respawn.bind(race);
+      vi.spyOn(race, 'respawn').mockImplementation((r) => {
+        // Giant knockback deliberately recovers after its flight; stuck bots must not.
+        recoveries.push(r.knockback.lengthSq() > 0 && r.knockedTime === 0 && r.stuck < 5);
+        respawn(r);
+      });
       for (let step = 0; step < 300 * 60 && !race.finished; step++) {
         race.update(
           1 / 60,
@@ -39,7 +45,7 @@ describe('fair and adjustable bot difficulty', () => {
           expect.objectContaining({ finished: true, checkpoint: 24 }),
         ),
       );
-      expect(respawn).not.toHaveBeenCalled();
+      expect(recoveries.every(Boolean)).toBe(true);
       if (shortcuts) expect(race.racers.some((r) => r.shortcutPasses === 3)).toBe(true);
     },
     30000,

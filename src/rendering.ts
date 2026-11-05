@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { characters, karts, trackDefinitions } from './config';
 import { Race, Track } from './race';
 import { RaceEffects } from './effects';
+import { createHazardModel, updateHazardModel } from './itemModels';
 import { animateKart, react, type KartRig } from './animation';
 import { scenery, obstacleModel } from './scenery';
 import { createTerrainGeometry } from './terrain';
@@ -364,7 +365,7 @@ export class Renderer {
   kartMeshes: THREE.Group[] = [];
   shieldMeshes: THREE.Mesh[] = [];
   pickupMeshes: THREE.Group[] = [];
-  hazardMeshes: THREE.Mesh[] = [];
+  hazardMeshes: THREE.Group[] = [];
   obstacleMeshes: THREE.Group[] = [];
   animatedScenery: THREE.Group[] = [];
   snowfall: THREE.Points | null = null;
@@ -827,12 +828,16 @@ export class Renderer {
         this.shieldMeshes[r.id].visible = r.shield > 0;
         this.shieldMeshes[r.id].rotation.y = this.reduced ? 0 : this.time * 0.5;
         g.visible = this.reduced || r.immune <= 0 || Math.sin(this.time * 24) > -0.35;
-        g.scale.setScalar(r.shield > 0 ? 1.04 : 1);
+        g.scale.setScalar(r.giantScale * (r.shield > 0 ? 1.04 : 1));
+        if (!this.reduced && r.giant > 0 && r.giant < 1.5)
+          g.scale.multiplyScalar(1 + Math.sin(this.time * 12) * 0.025);
         if (!this.reduced && r.landingTime > 0)
           g.scale.y *= 1 - 0.12 * Math.sin((r.landingTime / 0.28) * Math.PI);
         const rig = g.userData.rig as KartRig;
         rig.shadow.position.set(g.position.x, r.groundHeight + 0.04, g.position.z);
-        rig.shadow.scale.setScalar(1 / (1 + Math.max(0, r.pos.y - r.groundHeight) * 0.08));
+        rig.shadow.scale.setScalar(
+          r.giantScale / (1 + Math.max(0, r.pos.y - r.groundHeight) * 0.08),
+        );
         rig.shadow.material.opacity = 0.22 / (1 + Math.max(0, r.pos.y - r.groundHeight) * 0.2);
         g.position.y += r.boost > 0 && !this.reduced ? Math.sin(this.time * 30) * 0.025 : 0;
       }
@@ -843,7 +848,7 @@ export class Renderer {
         g.position.y = p.pos.y + (this.reduced ? 0 : Math.sin(this.time * 2 + i) * 0.2);
       });
       while (this.hazardMeshes.length < race.hazards.length) {
-        const m = mesh(sphere, '#f27491');
+        const m = createHazardModel();
         this.hazardMeshes.push(m);
         this.world.add(m);
       }
@@ -851,14 +856,7 @@ export class Renderer {
         const h = race.hazards[i];
         m.visible = !!h;
         if (h) {
-          m.position.copy(h.pos);
-          m.position.y += h.kind === 'missile' ? 0.8 : 0.25;
-          m.scale.set(
-            h.kind === 'missile' ? 0.4 : 1,
-            h.kind === 'missile' ? 0.4 : 0.25,
-            h.kind === 'missile' ? 1 : 0.8,
-          );
-          m.rotation.y = Math.atan2(h.direction.x, h.direction.z);
+          updateHazardModel(m, h, this.time, this.reduced);
         }
       });
     }
@@ -906,9 +904,9 @@ export class Renderer {
       if (race) {
         const r = race.racers[i],
           target = new THREE.Vector3(
-            r.pos.x - Math.sin(r.heading) * 9,
-            r.pos.y + 6.3,
-            r.pos.z - Math.cos(r.heading) * 9,
+            r.pos.x - Math.sin(r.heading) * 9 * r.giantScale,
+            r.pos.y + 6.3 * r.giantScale,
+            r.pos.z - Math.cos(r.heading) * 9 * r.giantScale,
           );
         camera.position.lerp(target, 1 - Math.exp(-dt * 7));
         camera.lookAt(

@@ -12,7 +12,10 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 - Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
 - Moulins, arches rocheuses et palmiers ; terrain vallonné, bosses permettant de vrais sauts, obstacles mobiles annoncés et raccourcis étroits éloignés du tracé principal.
 - Bots faciles, normaux ou difficiles, au choix avant la course. Le réglage est sauvegardé et conservé pour la revanche.
-- Boîtes cadeaux : missile guidé, turbo, bouclier, piège. Bandes de turbo sur la route.
+- Boîtes cadeaux : missile guidé, turbo, bouclier, flaque, mode géant et onde de choc. Bandes de turbo sur la route.
+- Géant : taille doublée pendant 7 secondes, résistance aux obstacles de la route et projection des adversaires sur les bas-côtés, suivie d'un retour en piste sans gain de progression. Les autres objets restent efficaces ; les boucliers absorbent les projections et deux géants se repoussent normalement.
+- Onde de choc : saut même à l'arrêt, puis impact à l'atterrissage qui assomme les rivaux à moins de 8 mètres pendant 1,5 seconde. En l'air, l'objet arme le prochain atterrissage. Le bouclier absorbe l'attaque et l'immunité temporaire empêche les assommages en chaîne.
+- Missile à ogive et ailerons, réacteur lumineux, traînée et explosion ; flaque sombre aux contours irréguliers, reflets colorés et éclaboussures. Anneau d'onde de choc, poussière et étoiles d'assommage, avec une variante à animations réduites.
 - Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Variante discrète avec les animations réduites.
 - Musique originale en boucle (8 mesures, 116 BPM), basse, mélodie et percussions ; sons distincts de cadeaux, pouvoirs, collisions, départ et arrivée. Volumes général/musique/effets indépendants.
 - Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
@@ -85,6 +88,7 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/minimap.ts` / `src/animation.ts`             | Carte du circuit et articulation des karts/pilotes                                |
 | `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor            |
 | `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU   |
+| `src/itemModels.ts`                               | Modèles réutilisables de missiles et de flaques                                   |
 | `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                            |
 | `src/main.ts`                                     | Écrans, HUD, orchestration de la partie et boucle principale                      |
 | `src/audio.ts`                                    | Mixage Web Audio, moteur, activation après interaction et pause                   |

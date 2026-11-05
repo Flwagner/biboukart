@@ -1391,3 +1391,20 @@ select {
 .player-hud:has(.touch-controls) .hud-bottom {
   bottom: 125px;
 }
+.power-status {
+  position: absolute;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.7rem;
+  border-radius: 1rem;
+  background: #172339db;
+  color: #fff4cf;
+  font-size: clamp(0.65rem, 1.5vw, 0.9rem);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.power-status:empty {
+  display: none;
+}

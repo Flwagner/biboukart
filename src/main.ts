@@ -202,7 +202,7 @@ function tracks() {
 function help() {
   screen = 'help';
   app.innerHTML = shell(
-    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🟣 <b>Piège</b> : une surprise pour les suivants.</p><p>Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Après l’arrivée du premier humain, les autres ont 45 secondes pour finir.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
+    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🛢️ <b>Flaque</b> : une glissade pour les suivants.<br>🍄 <b>Géant</b> : 7 secondes pour projeter les rivaux et traverser les obstacles.<br>💥 <b>Onde de choc</b> : sautez et assommez les rivaux proches à l’atterrissage.</p><p>Le bouclier bloque aussi les projections et l’onde de choc. Géant ne signifie pas invincible aux objets ! Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Après l’arrivée du premier humain, les autres ont 45 secondes pour finir.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
   );
   common();
   $('#back').onclick = home;
@@ -293,6 +293,8 @@ function start() {
     renderer.react(kind, id);
     if (kind === 'lastlap' && race?.racers[id]?.human) lastLapUntil[id] = race.elapsed + 3;
     if (kind === 'pickup' && race) renderer.effects?.pickup(id, race.racers[id].pos);
+    if ((kind === 'explosion' || kind === 'splash') && race)
+      renderer.effects?.impact(id, race.racers[id].pos, kind === 'splash');
     if (id < 0) {
       audio.play(kind);
       return;
@@ -321,7 +323,7 @@ function buildHUD() {
       .querySelector(`#hud-${i}`)!
       .insertAdjacentHTML(
         'beforeend',
-        `${minimapMarkup(race.track, i)}<div class="last-lap-banner" data-lastlap hidden role="status">🏁 Dernier tour !</div>`,
+        `${minimapMarkup(race.track, i)}<div class="last-lap-banner" data-lastlap hidden role="status">🏁 Dernier tour !</div><div class="power-status" data-power role="status"></div>`,
       );
   inputs.bindTouch(hud);
   hud.querySelector<HTMLElement>('#pause')!.onclick = () => pause();
@@ -345,6 +347,16 @@ function updateHUD() {
     el.querySelector('[data-lap]')!.innerHTML = `${Math.min(3, r.lap + 1)} <em>/ 3</em>`;
     el.querySelector('[data-position]')!.innerHTML = `${ranking.indexOf(r) + 1}<small> / 6</small>`;
     el.querySelector('[data-speed]')!.textContent = String(Math.round(Math.abs(r.speed) * 3.6));
+    el.querySelector('[data-power]')!.textContent =
+      r.knockedTime > 0
+        ? '💫 Retour en piste…'
+        : r.stun > 0
+          ? '💫 Assommé !'
+          : r.shockPending
+            ? '💥 Attention à l’atterrissage !'
+            : r.giant > 0
+              ? `🍄 Géant · ${Math.ceil(r.giant)} s`
+              : '';
     el.querySelector('[data-item]')!.innerHTML = r.item
       ? `${itemIcons[r.item]}<small>${itemNames[r.item]}</small>`
       : '◇<small>CADEAU</small>';

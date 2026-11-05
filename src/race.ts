@@ -48,6 +48,14 @@ export interface Racer {
   item: Item | null;
   boost: number;
   shield: number;
+  giant: number;
+  giantScale: number;
+  stun: number;
+  shockPending: boolean;
+  shockPulse: number;
+  shockOrigin: THREE.Vector3;
+  knockback: THREE.Vector3;
+  knockedTime: number;
   immune: number;
   slow: number;
   itemCooldown: number;
@@ -65,6 +73,8 @@ export interface Hazard {
   pos: THREE.Vector3;
   direction: THREE.Vector3;
   ttl: number;
+  pitch?: number;
+  roll?: number;
 }
 export class Race {
   track: Track;
@@ -126,6 +136,14 @@ export class Race {
         item: null,
         boost: 0,
         shield: 0,
+        giant: 0,
+        giantScale: 1,
+        stun: 0,
+        shockPending: false,
+        shockPulse: 0,
+        shockOrigin: p.clone(),
+        knockback: new THREE.Vector3(),
+        knockedTime: 0,
         immune: 0,
         slow: 0,
         itemCooldown: 0,
@@ -159,8 +177,8 @@ export class Race {
   chooseItem(rank: number): Item {
     const pool: Item[] =
       rank < 2
-        ? ['shield', 'trap', 'missile', 'turbo']
-        : ['turbo', 'missile', 'turbo', 'shield', 'trap'];
+        ? ['shield', 'trap', 'missile', 'turbo', 'giant', 'shockwave']
+        : ['turbo', 'missile', 'turbo', 'shield', 'trap', 'giant', 'shockwave'];
     return pool[Math.floor(this.random() * pool.length)];
   }
   ai(
@@ -233,34 +251,79 @@ export class Race {
     };
   }
   hit(r: Racer) {
-    if (r.immune > 0) return;
+    if (r.immune > 0 || r.finished) return false;
     if (r.shield > 0) {
       r.shield = 0;
       r.immune = 1;
       this.onEvent('block', r.id);
-      return;
+      return false;
     }
     r.slow = 1.3;
     r.speed *= 0.45;
     r.immune = 2.2;
     this.onEvent('hit', r.id);
+    return true;
+  }
+  shockwave(r: Racer) {
+    r.shockPending = false;
+    r.shockPulse = 0.65;
+    r.shockOrigin.copy(r.pos);
+    this.onEvent('shockwaveImpact', r.id);
+    for (const other of this.racers) {
+      if (other === r || other.pos.distanceTo(r.pos) > 8) continue;
+      if (this.hit(other)) {
+        other.stun = 1.5;
+        other.speed = 0;
+      }
+    }
+  }
+  throwKart(source: Racer, target: Racer) {
+    if (!this.hit(target)) return;
+    // Throw sideways, away from the road, rather than granting forward progress.
+    const surface = this.track.surface(target.pos, target.route);
+    const side = new THREE.Vector3(surface.tangent.z, 0, -surface.tangent.x).normalize();
+    const offset = target.pos.clone().sub(source.pos).dot(side);
+    side.multiplyScalar(offset < 0 ? -1 : 1);
+    target.knockback.copy(side).multiplyScalar(20);
+    target.knockedTime = 1.4;
+    target.airborne = true;
+    target.verticalSpeed = 7;
+    target.speed = 0;
   }
   use(r: Racer) {
-    if (!r.item || r.itemCooldown > 0) return;
+    if (!r.item || r.itemCooldown > 0 || r.stun > 0 || r.knockedTime > 0 || r.finished) return;
     const item = r.item;
     r.item = null;
     r.itemCooldown = 0.4;
     this.onEvent('item', r.id, item);
     if (item === 'turbo') r.boost = Math.min(4, r.boost + 2.2);
     if (item === 'shield') r.shield = 7;
+    if (item === 'giant') r.giant = 7;
+    if (item === 'shockwave') {
+      r.shockPending = true;
+      if (!r.airborne) {
+        r.airborne = true;
+        r.verticalSpeed = 8;
+        r.pos.y += 0.02;
+        r.takeoffs++;
+      }
+    }
     if (item === 'missile' || item === 'trap') {
       const dir = new THREE.Vector3(Math.sin(r.heading), 0, Math.cos(r.heading));
+      const position = r.pos.clone().addScaledVector(dir, item === 'trap' ? -3 : 3);
+      const surface = this.track.surface(position, r.route);
+      position.y = surface.height;
       this.hazards.push({
         kind: item,
         owner: r.id,
-        pos: r.pos.clone().addScaledVector(dir, item === 'trap' ? -3 : 3),
-        direction: dir,
+        pos: position,
+        direction: item === 'trap' ? surface.tangent.clone().setY(0).normalize() : dir,
         ttl: item === 'trap' ? 14 : 4,
+        pitch:
+          item === 'trap'
+            ? -Math.atan2(surface.tangent.y, Math.hypot(surface.tangent.x, surface.tangent.z))
+            : 0,
+        roll: item === 'trap' ? surface.bank : 0,
       });
     }
   }
@@ -279,13 +342,31 @@ export class Race {
     for (const box of this.pickups) box.cooldown = Math.max(0, box.cooldown - dt);
     for (const r of this.racers) {
       r.previous.copy(r.pos);
-      for (const key of ['boost', 'shield', 'immune', 'slow', 'itemCooldown'] as const)
+      const wasKnocked = r.knockedTime > 0;
+      for (const key of [
+        'boost',
+        'shield',
+        'immune',
+        'slow',
+        'itemCooldown',
+        'giant',
+        'stun',
+        'shockPulse',
+        'knockedTime',
+      ] as const)
         r[key] = Math.max(0, r[key] - dt);
+      r.giantScale += THREE.MathUtils.clamp((r.giant > 0 ? 2 : 1) - r.giantScale, -dt * 3, dt * 3);
+      if (wasKnocked && r.knockedTime === 0) this.respawn(r);
       if (r.finished) {
         r.speed *= Math.exp(-dt * 2);
         continue;
       }
-      const input = r.human ? (inputs[r.id] ?? idleInput()) : this.ai(r),
+      const input =
+          r.stun > 0 || r.knockedTime > 0
+            ? idleInput()
+            : r.human
+              ? (inputs[r.id] ?? idleInput())
+              : this.ai(r),
         spec = karts[r.config.kart];
       r.steering = input.steer;
       r.braking = THREE.MathUtils.clamp(input.brake, 0, 1);
@@ -309,8 +390,10 @@ export class Race {
         dt;
       r.pos.x += Math.sin(r.heading) * r.speed * dt;
       r.pos.z += Math.cos(r.heading) * r.speed * dt;
+      r.pos.addScaledVector(r.knockback, dt);
+      r.knockback.multiplyScalar(Math.exp(-dt * 1.7));
       let n = this.track.surface(r.pos, r.route);
-      if (n.distance > n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) {
+      if (r.knockedTime === 0 && n.distance > n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) {
         const center = n.center,
           delta = r.pos.clone().sub(center);
         delta.y = 0;
@@ -337,6 +420,7 @@ export class Race {
       r.groundHeight = n.height;
       const flightEvent = updateFlight(r, n.height, dt, launch);
       if (flightEvent) this.onEvent(flightEvent, r.id);
+      if (flightEvent === 'land' && r.shockPending) this.shockwave(r);
       r.pitch = -Math.atan2(n.tangent.y, Math.hypot(n.tangent.x, n.tangent.z));
       r.roll = n.bank;
       let delta = n.t - r.lastT;
@@ -344,8 +428,9 @@ export class Race {
       if (delta > 0.5) delta -= 1;
       // Only local, physical movement can advance race progress.
       if (
+        r.knockedTime === 0 &&
         Math.abs(delta) * this.track.length <
-        Math.abs(r.speed) * dt * this.track.maxProgressRatio + 2
+          Math.abs(r.speed) * dt * this.track.maxProgressRatio + 2
       )
         r.progress += delta;
       r.lastT = n.t;
@@ -366,9 +451,10 @@ export class Race {
       if (r.stuck > 5) {
         this.respawn(r);
       }
-      if (n.distance > 22) this.respawn(r);
+      if (n.distance > 22 && r.knockedTime === 0) this.respawn(r);
       for (const obstacle of this.obstacles)
         if (
+          r.giant === 0 &&
           r.pos.y - obstacle.pos.y < obstacle.radius + 1 &&
           Math.hypot(r.pos.x - obstacle.pos.x, r.pos.z - obstacle.pos.z) < obstacle.radius + 1
         )
@@ -410,11 +496,15 @@ export class Race {
         const a = this.racers[i],
           b = this.racers[j],
           d = a.pos.distanceTo(b.pos);
-        if (d < 2.1 && d > 0.001) {
+        if (a.finished || b.finished || a.knockedTime > 0 || b.knockedTime > 0) continue;
+        const radius = 1.05 * (a.giantScale + b.giantScale);
+        if (d < radius && d > 0.001) {
+          if (a.giant > 0 && b.giant === 0) this.throwKart(a, b);
+          if (b.giant > 0 && a.giant === 0) this.throwKart(b, a);
           const push = a.pos
             .clone()
             .sub(b.pos)
-            .multiplyScalar(((2.1 - d) / d) * 0.5);
+            .multiplyScalar(((radius - d) / d) * 0.5);
           a.pos.add(push);
           b.pos.sub(push);
           a.speed *= 0.995;
@@ -436,8 +526,9 @@ export class Race {
         if (surface.distance > surface.width / 2 + 3) h.ttl = 0;
       }
       for (const r of this.racers)
-        if (r.id !== h.owner && !r.finished && r.pos.distanceTo(h.pos) < 2.2) {
+        if (r.id !== h.owner && !r.finished && r.pos.distanceTo(h.pos) < 1.1 * (1 + r.giantScale)) {
           this.hit(r);
+          this.onEvent(h.kind === 'missile' ? 'explosion' : 'splash', r.id);
           h.ttl = 0;
           break;
         }
@@ -470,6 +561,9 @@ export class Race {
     r.landingTime = 0;
     r.jumpCooldown = 0.8;
     r.groundHeight = r.pos.y;
+    r.knockback.set(0, 0, 0);
+    r.knockedTime = 0;
+    r.shockPending = false;
   }
 }
 export function wrap(a: number) {

@@ -8,6 +8,11 @@ interface KartEffect {
   ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   pickupAge: number;
   origin: THREE.Vector3;
+  shock: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
+  dust: THREE.Group;
+  stunned: THREE.Group;
+  impact: THREE.Group;
+  impactAge: number;
 }
 
 /** Fixed-size, race-local effects. No allocations or new GPU resources per pickup. */
@@ -84,8 +89,51 @@ export class RaceEffects {
       );
       ring.rotation.x = -Math.PI / 2;
       ring.visible = false;
-      this.root.add(trail, ring);
-      this.karts.push({ trail, ring, pickupAge: BURST_SECONDS, origin: new THREE.Vector3() });
+      const shock = new THREE.Mesh(
+        new THREE.RingGeometry(0.88, 1, 48),
+        new THREE.MeshBasicMaterial({
+          color: '#ffcc75',
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      shock.rotation.x = -Math.PI / 2;
+      shock.visible = false;
+      const dust = new THREE.Group(),
+        stunned = new THREE.Group(),
+        impact = new THREE.Group();
+      const dustGeometry = new THREE.IcosahedronGeometry(0.35, 0);
+      const dustMaterial = new THREE.MeshBasicMaterial({
+        color: '#d8c1a0',
+        transparent: true,
+        opacity: 0.6,
+      });
+      for (let j = 0; j < 10; j++) dust.add(new THREE.Mesh(dustGeometry, dustMaterial));
+      for (let j = 0; j < 3; j++)
+        stunned.add(
+          new THREE.Mesh(
+            this.stars.geometry,
+            new THREE.MeshBasicMaterial({ color: '#ffe486', side: THREE.DoubleSide }),
+          ),
+        );
+      const impactGeometry = new THREE.IcosahedronGeometry(0.35, 0);
+      const impactMaterial = new THREE.MeshBasicMaterial({ color: '#ffbd62' });
+      for (let j = 0; j < 8; j++) impact.add(new THREE.Mesh(impactGeometry, impactMaterial));
+      dust.visible = stunned.visible = impact.visible = false;
+      this.root.add(trail, ring, shock, dust, stunned, impact);
+      this.karts.push({
+        trail,
+        ring,
+        shock,
+        dust,
+        stunned,
+        impact,
+        impactAge: 1,
+        pickupAge: BURST_SECONDS,
+        origin: new THREE.Vector3(),
+      });
     }
   }
   pickup(id: number, position: THREE.Vector3) {
@@ -97,12 +145,62 @@ export class RaceEffects {
   isCollecting(id: number) {
     return (this.karts[id]?.pickupAge ?? BURST_SECONDS) < BURST_SECONDS;
   }
+  impact(id: number, position: THREE.Vector3, splash: boolean) {
+    const effect = this.karts[id];
+    if (!effect) return;
+    effect.impactAge = 0;
+    effect.impact.position.copy(position);
+    const material = (effect.impact.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
+    material.color.set(splash ? '#53456e' : '#ffbd62');
+  }
   update(dt: number, racers: readonly Racer[], reduced: boolean) {
     this.clock += dt;
     let activeStars = false;
     for (const racer of racers) {
       const effect = this.karts[racer.id];
       if (!effect) continue;
+      const pulse = racer.shockPulse / 0.65;
+      effect.shock.visible = pulse > 0;
+      effect.shock.position.copy(racer.shockOrigin);
+      effect.shock.position.y += 0.12;
+      effect.shock.scale.setScalar(reduced ? 8 : 1 + (1 - pulse) * 7);
+      effect.shock.material.opacity = pulse * 0.8;
+      effect.dust.visible = pulse > 0 && !reduced;
+      effect.dust.position.copy(racer.shockOrigin);
+      effect.dust.children.forEach((puff, j) => {
+        const angle = (j / 10) * Math.PI * 2;
+        const radius = 1 + (1 - pulse) * 7;
+        puff.position.set(
+          Math.sin(angle) * radius,
+          0.2 + Math.sin(pulse * Math.PI) * 0.7,
+          Math.cos(angle) * radius,
+        );
+        puff.scale.setScalar(pulse * 1.6);
+      });
+      effect.stunned.visible = racer.stun > 0;
+      effect.stunned.position.copy(racer.pos);
+      effect.stunned.children.forEach((star, j) => {
+        const angle = (j * Math.PI * 2) / 3 + (reduced ? 0 : this.clock * 4);
+        star.position.set(
+          Math.sin(angle) * 0.9 * racer.giantScale,
+          2.7 * racer.giantScale,
+          Math.cos(angle) * 0.9 * racer.giantScale,
+        );
+        star.rotation.y = angle;
+        star.scale.setScalar(0.65);
+      });
+      effect.impactAge = Math.min(1, effect.impactAge + dt * 2);
+      effect.impact.visible = effect.impactAge < 1 && !reduced;
+      effect.impact.children.forEach((particle, j) => {
+        const age = effect.impactAge,
+          angle = (j * Math.PI) / 4;
+        particle.position.set(
+          Math.sin(angle) * age * 2,
+          0.6 + Math.sin(age * Math.PI) * (0.5 + (j % 3) * 0.4),
+          Math.cos(angle) * age * 2,
+        );
+        particle.scale.setScalar(1 - age);
+      });
       effect.pickupAge = Math.min(BURST_SECONDS, effect.pickupAge + dt);
       const burst = effect.pickupAge < BURST_SECONDS;
       const boosted = racer.boost > 0 && !racer.finished;

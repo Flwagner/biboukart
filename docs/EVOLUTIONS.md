@@ -1,5 +1,15 @@
 # Évolutions : trois lots autonomes
 
+## Nouveaux cadeaux — Géant et onde de choc
+
+- Six objets dans les cadeaux pour les humains comme pour les bots. Les libellés, icônes et le guide du pilote présentent aussi le géant et l'onde de choc ; le piège est désormais nommé « Flaque ».
+- Géant pendant 7 secondes : taille doublée progressivement, collisions élargies, caméra et ombre adaptées, résistance aux obstacles mobiles. Les rivaux percutés sont projetés latéralement avec un saut, puis remis sur la piste après 1,4 seconde sans gain de progression. Deux géants se repoussent normalement. Le bouclier bloque une projection ; missiles, flaques et onde de choc restent efficaces contre un géant.
+- Onde de choc : saut à l'arrêt ou armement du prochain atterrissage si le kart vole déjà. L'impact assomme pendant 1,5 seconde les adversaires dans un rayon de 8 mètres. Le bouclier et l'immunité temporaire empêchent les attaques en chaîne.
+- Missiles avec corps, ogive, ailerons, tuyère, flamme et traînée ; flaques irrégulières sombres, reflets colorés et inclinaison suivant la route, même lorsqu'elles sont déposées en sautant. Modèles réutilisés dans les emplacements de projectiles et ressources libérées à la fin de la course.
+- Anneau d'impact, poussière, étoiles d'assommage, explosions et éclaboussures préalloués. Les animations réduites conservent l'information sans poussière, traînée ou particules animées. Nouveaux sons synthétisés et indicateurs d'effet dans le HUD.
+
+Validation ciblée : **155 tests unitaires**, dont les courses complètes sur les cinq circuits aux trois difficultés ; **3 scénarios navigateur** pour les nouveaux sons, les modèles visibles en piste et les pouvoirs en écran partagé ; build et test statique sous `/biboukart/` réussis. La matrice de courses complètes distingue désormais les retours volontaires après projection des repositionnements indésirables dus à un blocage. Captures locales : `items-models.png`, `items-split.png`, `items-shockwave.png` dans `test-results/`.
+
 ## Retours suivants — Lisibilité, relief, sauts et personnages
 
 - Piquets et portiques des raccourcis supprimés. Asphalte et bordures neutres, comme la route principale ; le jaune au sol indique uniquement les turbos.
