@@ -112,7 +112,7 @@ export class RaceEffects {
       effect.trail.scale.z = 1 + Math.sin(this.clock * 12 + racer.id) * 0.12;
       effect.ring.visible = burst || (boosted && reduced);
       effect.ring.position.copy(burst ? effect.origin : racer.pos);
-      effect.ring.position.y = 0.12;
+      effect.ring.position.y += 0.12;
       const age = effect.pickupAge / BURST_SECONDS;
       effect.ring.scale.setScalar(burst && !reduced ? 1 + age * 1.8 : 1);
       effect.ring.material.opacity = burst ? 0.85 * (1 - age) : 0.45;
@@ -124,7 +124,7 @@ export class RaceEffects {
           const radius = 0.65 + age * (2.5 + (j % 3) * 0.35);
           this.transform.position.set(
             effect.origin.x + Math.cos(angle) * radius,
-            0.7 + Math.sin(age * Math.PI) * 1.8 + (j % 3) * 0.25,
+            effect.origin.y + 0.7 + Math.sin(age * Math.PI) * 1.8 + (j % 3) * 0.25,
             effect.origin.z + Math.sin(angle) * radius,
           );
           this.transform.rotation.set(0, angle + age * 3, Math.sin(angle) * age);

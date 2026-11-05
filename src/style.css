@@ -29,6 +29,13 @@
   stroke-width: 9;
   stroke-linejoin: round;
 }
+.map-shortcut {
+  fill: none;
+  stroke: #ffd875;
+  stroke-width: 4;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+}
 .minimap circle {
   stroke: #26394c;
   stroke-width: 2;

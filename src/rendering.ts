@@ -4,6 +4,8 @@ import { characters, karts, trackDefinitions } from './config';
 import { Race, Track } from './race';
 import { RaceEffects } from './effects';
 import { animateKart, react, type KartRig } from './animation';
+import { scenery, obstacleModel } from './scenery';
+import type { Route } from './track';
 const mat = (color: THREE.ColorRepresentation) =>
   new THREE.MeshLambertMaterial({ color, flatShading: true });
 const materialCache = new Map<string, THREE.Material>();
@@ -171,6 +173,8 @@ export class Renderer {
   shieldMeshes: THREE.Mesh[] = [];
   pickupMeshes: THREE.Group[] = [];
   hazardMeshes: THREE.Mesh[] = [];
+  obstacleMeshes: THREE.Group[] = [];
+  animatedScenery: THREE.Group[] = [];
   track: Track;
   race: Race | null = null;
   effects: RaceEffects | null = null;
@@ -235,6 +239,8 @@ export class Renderer {
     this.shieldMeshes = [];
     this.pickupMeshes = [];
     this.hazardMeshes = [];
+    this.obstacleMeshes = [];
+    this.animatedScenery = [];
   }
   buildWorld(track: Track) {
     this.clearWorld();
@@ -266,28 +272,67 @@ export class Renderer {
       right: number,
       height: number,
       colorAt: (i: number) => THREE.Color,
+      route: Route = 'main',
+      embankment = false,
     ) => {
       for (let i = 0; i < segments; i++) {
-        const a = track.at(i / segments),
-          b = track.at((i + 1) / segments),
-          ta = track.tangent(i / segments),
-          tb = track.tangent((i + 1) / segments);
-        const na = new THREE.Vector3(ta.z, 0, -ta.x),
-          nb = new THREE.Vector3(tb.z, 0, -tb.x);
+        const a = track.routeAt(route, i / segments),
+          b = track.routeAt(route, (i + 1) / segments),
+          ta = track.routeTangent(route, i / segments),
+          tb = track.routeTangent(route, (i + 1) / segments);
+        const na = new THREE.Vector3(ta.z, 0, -ta.x).normalize(),
+          nb = new THREE.Vector3(tb.z, 0, -tb.x).normalize();
         const ps = [
           a.clone().addScaledVector(na, left),
           a.clone().addScaledVector(na, right),
           b.clone().addScaledVector(nb, left),
           b.clone().addScaledVector(nb, right),
         ];
+        if (route === 'main')
+          ps.forEach(
+            (p, j) =>
+              (p.y += track.bank((i + (j > 1 ? 1 : 0)) / segments) * (j % 2 ? right : left)),
+          );
+        if (embankment) {
+          ps[1].y = -0.1;
+          ps[3].y = -0.1;
+        }
         const c = colorAt(i);
         for (const j of [0, 2, 1, 1, 2, 3]) {
-          vertices.push(ps[j].x, height, ps[j].z);
+          vertices.push(ps[j].x, ps[j].y + height, ps[j].z);
           colors.push(c.r, c.g, c.b);
         }
       }
     };
     ribbon(-track.width / 2, track.width / 2, 0.02, () => roadColor);
+    for (const route of ['main', 'shortcut'] as const) {
+      const width = route === 'main' ? track.width : track.shortcut.width;
+      for (const side of [-1, 1])
+        ribbon(
+          side * (width / 2 + 0.7),
+          side * (width / 2 + 6),
+          0,
+          () => new THREE.Color(def.ground),
+          route,
+          true,
+        );
+    }
+    ribbon(
+      -track.shortcut.width / 2,
+      track.shortcut.width / 2,
+      0.025,
+      () =>
+        new THREE.Color(track.index === 0 ? '#a9a47b' : track.index === 1 ? '#a47b61' : '#d8ba7d'),
+      'shortcut',
+    );
+    for (const side of [-1, 1])
+      ribbon(
+        (side * track.shortcut.width) / 2,
+        side * (track.shortcut.width / 2 + 0.25),
+        0.04,
+        () => new THREE.Color('#f8cc77'),
+        'shortcut',
+      );
     for (const side of [-1, 1])
       ribbon(
         (side * track.width) / 2,
@@ -309,9 +354,14 @@ export class Renderer {
       const t = i / 70,
         p = track.at(t),
         tan = track.tangent(t),
-        dash = mesh(box, '#d6d5c5', p.x, 0.04, p.z);
+        dash = mesh(box, '#d6d5c5', p.x, p.y + 0.04, p.z);
       dash.scale.set(0.15, 0.02, 1.8);
-      dash.rotation.y = Math.atan2(tan.x, tan.z);
+      dash.rotation.set(
+        -Math.atan2(tan.y, Math.hypot(tan.x, tan.z)),
+        Math.atan2(tan.x, tan.z),
+        track.bank(t),
+        'YXZ',
+      );
       this.world.add(dash);
     }
     for (const t of [0, 0.17, 0.48, 0.79]) {
@@ -319,7 +369,12 @@ export class Renderer {
         tan = track.tangent(t),
         g = new THREE.Group();
       g.position.copy(p);
-      g.rotation.y = Math.atan2(tan.x, tan.z);
+      g.rotation.set(
+        -Math.atan2(tan.y, Math.hypot(tan.x, tan.z)),
+        Math.atan2(tan.x, tan.z),
+        track.bank(t),
+        'YXZ',
+      );
       if (t === 0) {
         for (let x = 0; x < 12; x++)
           for (let z = 0; z < 2; z++)
@@ -353,7 +408,15 @@ export class Renderer {
     const rockPositions: THREE.Matrix4[] = [];
     for (let i = 0; i < 260; i++) {
       const p = new THREE.Vector3((random() - 0.5) * 260, 0, (random() - 0.5) * 240);
-      if (track.nearest(p).distance < track.width / 2 + 5 || p.length() > 130) continue;
+      const branchDistance = Math.min(
+        ...track.shortcut.samples.map((s) => Math.hypot(p.x - s.x, p.z - s.z)),
+      );
+      if (
+        track.nearest(p).distance < track.width / 2 + 5 ||
+        branchDistance < track.shortcut.width / 2 + 4 ||
+        p.length() > 130
+      )
+        continue;
       const s = 1 + random() * 2;
       if (track.index === 1) {
         const matrix = new THREE.Matrix4().compose(
@@ -362,7 +425,7 @@ export class Renderer {
           new THREE.Vector3(s * 2, s * 3, s * 1.7),
         );
         rockPositions.push(matrix);
-      } else {
+      } else if (track.index === 0) {
         treePositions.push(
           new THREE.Matrix4().compose(
             p.clone().add(new THREE.Vector3(0, s * 2.5, 0)),
@@ -408,7 +471,65 @@ export class Renderer {
       );
       this.world.add(hill);
     }
+    const decor = scenery(track);
+    this.world.add(decor.group);
+    this.animatedScenery = decor.moving;
+    // Yellow gate and posts explicitly mark the optional narrow route.
+    for (const u of [0, 0.15, 0.45, 0.75, 1]) {
+      const p = track.routeAt('shortcut', u),
+        tan = track.routeTangent('shortcut', u),
+        gate = new THREE.Group();
+      gate.position.copy(p);
+      gate.rotation.y = Math.atan2(tan.x, tan.z);
+      for (const side of [-1, 1])
+        block(
+          gate,
+          '#f6cc73',
+          [0.18, 1.4, 0.18],
+          [side * (track.shortcut.width / 2 + 0.5), 0.7, 0],
+        );
+      if (u === 0) {
+        block(gate, '#354b50', [track.shortcut.width + 1.2, 0.6, 0.2], [0, 2.5, 0]);
+        for (const x of [-1, 0, 1]) block(gate, '#f5d58b', [0.3, 0.3, 0.24], [x, 2.5, 0.02]);
+      }
+      this.world.add(gate);
+    }
+    const obstacle = track.createObstacle();
+    const branchBoost = new THREE.Group(),
+      branchPoint = track.routeAt('shortcut', 0.5),
+      branchTangent = track.routeTangent('shortcut', 0.5);
+    branchBoost.position.copy(branchPoint);
+    branchBoost.rotation.set(
+      -Math.atan2(branchTangent.y, Math.hypot(branchTangent.x, branchTangent.z)),
+      Math.atan2(branchTangent.x, branchTangent.z),
+      0,
+      'YXZ',
+    );
+    block(branchBoost, '#f8c658', [track.shortcut.width - 0.3, 0.04, 3], [0, 0.08, 0]);
+    for (const z of [-0.8, 0, 0.8]) block(branchBoost, '#fff2be', [2, 0.05, 0.18], [0, 0.13, z]);
+    this.world.add(branchBoost);
+    for (const side of [-1, 1]) {
+      const t = obstacle.t - 0.025,
+        p = track.at(t),
+        tan = track.tangent(t),
+        sign = new THREE.Group();
+      sign.position
+        .copy(p)
+        .addScaledVector(
+          new THREE.Vector3(tan.z, 0, -tan.x).normalize(),
+          side * (track.width / 2 + 1),
+        );
+      sign.rotation.y = Math.atan2(tan.x, tan.z);
+      block(sign, '#3e5051', [0.12, 2.5, 0.12], [0, 1.25, 0]);
+      const triangle = mesh(new THREE.ConeGeometry(0.85, 1.4, 3), '#f7cd71', 0, 2.8, 0);
+      triangle.scale.z = 0.12;
+      sign.add(triangle);
+      block(sign, '#4b4b43', [0.13, 0.5, 0.15], [0, 2.8, 0.16]);
+      block(sign, '#4b4b43', [0.14, 0.14, 0.16], [0, 2.4, 0.16]);
+      this.world.add(sign);
+    }
     batchStatic(this.world);
+    this.world.add(...this.animatedScenery);
   }
   start(race: Race) {
     this.race = race;
@@ -456,6 +577,12 @@ export class Renderer {
     }
     this.effects = new RaceEffects(race.racers.length);
     this.world.add(this.effects.root);
+    this.obstacleMeshes = race.obstacles.map((obstacle) => {
+      const model = obstacleModel(obstacle);
+      batchStatic(model);
+      this.world.add(model);
+      return model;
+    });
     this.resolution =
       this.quality === 'low' || race.racers.filter((r) => r.human).length > 2
         ? 0.8
@@ -489,23 +616,35 @@ export class Renderer {
     }
     const race = this.race;
     if (race) {
+      race.obstacles.forEach((obstacle, i) => {
+        const model = this.obstacleMeshes[i];
+        model.position.copy(obstacle.pos);
+        model.rotation.y = Math.atan2(
+          race.track.tangent(obstacle.t).x,
+          race.track.tangent(obstacle.t).z,
+        );
+        if (obstacle.kind === 'rock') {
+          model.position.y += 1.6;
+          model.rotation.z = race.elapsed * 1.4;
+        }
+      });
       this.effects?.update(effectsDt, race.racers, this.reduced);
       for (const r of race.racers) {
         const g = this.kartMeshes[r.id];
         g.position.lerpVectors(r.previous, r.pos, alpha);
-        g.rotation.y = r.heading;
+        g.rotation.set(r.pitch, r.heading, r.roll, 'YXZ');
         animateKart(g.userData.rig, effectsDt, r.speed, r.steering, this.reduced);
         this.shieldMeshes[r.id].visible = r.shield > 0;
         this.shieldMeshes[r.id].rotation.y = this.reduced ? 0 : this.time * 0.5;
         g.visible = this.reduced || r.immune <= 0 || Math.sin(this.time * 24) > -0.35;
         g.scale.setScalar(r.shield > 0 ? 1.04 : 1);
-        g.position.y = r.boost > 0 && !this.reduced ? Math.sin(this.time * 30) * 0.025 : 0;
+        g.position.y += r.boost > 0 && !this.reduced ? Math.sin(this.time * 30) * 0.025 : 0;
       }
       race.pickups.forEach((p, i) => {
         const g = this.pickupMeshes[i];
         g.visible = p.cooldown <= 0;
         g.rotation.y = this.reduced ? 0 : this.time;
-        g.position.y = this.reduced ? 0 : Math.sin(this.time * 2 + i) * 0.2;
+        g.position.y = p.pos.y + (this.reduced ? 0 : Math.sin(this.time * 2 + i) * 0.2);
       });
       while (this.hazardMeshes.length < race.hazards.length) {
         const m = mesh(sphere, '#f27491');
@@ -517,7 +656,7 @@ export class Renderer {
         m.visible = !!h;
         if (h) {
           m.position.copy(h.pos);
-          m.position.y = h.kind === 'missile' ? 0.8 : 0.25;
+          m.position.y += h.kind === 'missile' ? 0.8 : 0.25;
           m.scale.set(
             h.kind === 'missile' ? 0.4 : 1,
             h.kind === 'missile' ? 0.4 : 0.25,
@@ -527,6 +666,8 @@ export class Renderer {
         }
       });
     }
+    for (const sails of this.animatedScenery)
+      sails.rotation.z = this.reduced ? 0 : sails.rotation.z + (race ? effectsDt : dt) * 0.3;
     const count = race ? this.cameras.length : 1;
     let views = viewports(count, this.width, this.height);
     if (this.podium) {
@@ -563,11 +704,15 @@ export class Renderer {
         const r = race.racers[i],
           target = new THREE.Vector3(
             r.pos.x - Math.sin(r.heading) * 9,
-            6.3,
+            r.pos.y + 6.3,
             r.pos.z - Math.cos(r.heading) * 9,
           );
         camera.position.lerp(target, 1 - Math.exp(-dt * 7));
-        camera.lookAt(r.pos.x + Math.sin(r.heading) * 6, 1, r.pos.z + Math.cos(r.heading) * 6);
+        camera.lookAt(
+          r.pos.x + Math.sin(r.heading) * 6,
+          r.pos.y + 1,
+          r.pos.z + Math.cos(r.heading) * 6,
+        );
         const targetFov = r.boost > 0 && !r.finished && !this.reduced ? 71 : 64;
         camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-effectsDt * 5));
       }

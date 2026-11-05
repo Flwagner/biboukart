@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { karts, trackDefinitions, type Item, type PlayerConfig } from './config';
+import { karts, type Item, type PlayerConfig } from './config';
+import { Track, type Route, type Obstacle } from './track';
+export { Track } from './track';
 export interface Input {
   throttle: number;
   brake: number;
@@ -7,46 +9,6 @@ export interface Input {
   use: boolean;
 }
 export const idleInput = (): Input => ({ throttle: 0, brake: 0, steer: 0, use: false });
-export class Track {
-  curve: THREE.CatmullRomCurve3;
-  samples: THREE.Vector3[];
-  tangents: THREE.Vector3[];
-  length: number;
-  width: number;
-  constructor(public index: number) {
-    const d = trackDefinitions[index];
-    this.width = d.width;
-    this.curve = new THREE.CatmullRomCurve3(
-      d.points.map(([x, z]) => new THREE.Vector3(x, 0, z)),
-      true,
-      'catmullrom',
-      0.3,
-    );
-    this.length = this.curve.getLength();
-    this.samples = Array.from({ length: 512 }, (_, i) => this.curve.getPointAt(i / 512));
-    this.tangents = Array.from({ length: 512 }, (_, i) =>
-      this.curve.getTangentAt(i / 512).normalize(),
-    );
-  }
-  at(t: number) {
-    return this.curve.getPointAt(((t % 1) + 1) % 1);
-  }
-  tangent(t: number) {
-    return this.curve.getTangentAt(((t % 1) + 1) % 1).normalize();
-  }
-  nearest(p: THREE.Vector3) {
-    let index = 0,
-      distance = Infinity;
-    for (let i = 0; i < 512; i++) {
-      const d = p.distanceToSquared(this.samples[i]);
-      if (d < distance) {
-        distance = d;
-        index = i;
-      }
-    }
-    return { index, t: index / 512, distance: Math.sqrt(distance) };
-  }
-}
 export interface Racer {
   id: number;
   human: boolean;
@@ -56,6 +18,12 @@ export interface Racer {
   heading: number;
   speed: number;
   steering: number;
+  route: Route;
+  pitch: number;
+  roll: number;
+  shortcutPasses: number;
+  shortcutVisitLap: number;
+  shortcutCountLap: number;
   progress: number;
   lastT: number;
   checkpoint: number;
@@ -88,6 +56,7 @@ export class Race {
   racers: Racer[] = [];
   pickups: Pickup[] = [];
   hazards: Hazard[] = [];
+  obstacles: Obstacle[] = [];
   boosts: number[] = [0.17, 0.48, 0.79];
   elapsed = 0;
   countdown = 3.5;
@@ -97,6 +66,7 @@ export class Race {
   onEvent: (kind: string, racer: number, item?: Item) => void = () => {};
   constructor(track: number, players: PlayerConfig[]) {
     this.track = new Track(track);
+    this.obstacles = [this.track.createObstacle()];
     for (let i = 0; i < 6; i++) {
       const t = 1 - (3 + Math.floor(i / 2) * 5) / this.track.length,
         tangent = this.track.tangent(t),
@@ -111,6 +81,12 @@ export class Race {
         heading: Math.atan2(tangent.x, tangent.z),
         speed: 0,
         steering: 0,
+        route: 'main',
+        pitch: 0,
+        roll: 0,
+        shortcutPasses: 0,
+        shortcutVisitLap: -1,
+        shortcutCountLap: -1,
         progress: t - 1,
         lastT: t,
         checkpoint: 0,
@@ -157,11 +133,27 @@ export class Race {
         : ['turbo', 'missile', 'turbo', 'shield', 'trap'];
     return pool[Math.floor(this.random() * pool.length)];
   }
-  ai(r: Racer): Input {
-    const n = this.track.nearest(r.pos),
-      target = this.track.at(n.t + (8 + Math.abs(r.speed) * 0.5) / this.track.length);
+  ai(r: Racer, preferShortcut = r.id % 3 === 0): Input {
+    const n = this.track.surface(r.pos, r.route),
+      lookAhead =
+        n.route === 'shortcut' ? 7 + Math.abs(r.speed) * 0.35 : 8 + Math.abs(r.speed) * 0.5,
+      target = this.track.target(n, lookAhead, preferShortcut);
+    for (const obstacle of this.obstacles) {
+      const ahead = ((obstacle.t - n.t + 1) % 1) * this.track.length;
+      if (n.route === 'main' && ahead < 21) {
+        const tangent = this.track.tangent(n.t);
+        target.addScaledVector(
+          new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+          (obstacle.offset >= 0 ? -1 : 1) * 4.3,
+        );
+      }
+    }
     const angle = wrap(Math.atan2(target.x - r.pos.x, target.z - r.pos.z) - r.heading);
-    let steer = angle * 1.5;
+    // Pure pursuit: requested yaw follows curvature, using the kart's real steering limits.
+    let steer =
+      Math.abs(r.speed) > 5
+        ? (2 * Math.abs(r.speed) * Math.sin(angle)) / (lookAhead * karts[r.config.kart].handling)
+        : angle * 1.5;
     for (const other of this.racers)
       if (other !== r) {
         const delta = other.pos.clone().sub(r.pos);
@@ -222,6 +214,7 @@ export class Race {
       return;
     }
     this.elapsed += dt;
+    for (const obstacle of this.obstacles) this.track.moveObstacle(obstacle, this.elapsed);
     for (const box of this.pickups) box.cooldown = Math.max(0, box.cooldown - dt);
     for (const r of this.racers) {
       r.previous.copy(r.pos);
@@ -235,8 +228,8 @@ export class Race {
         spec = karts[r.config.kart];
       r.steering = input.steer;
       if (input.use) this.use(r);
-      const near = this.track.nearest(r.pos),
-        off = near.distance > this.track.width / 2;
+      const near = this.track.surface(r.pos, r.route),
+        off = near.distance > near.width / 2;
       const max = spec.speed * (r.boost > 0 ? 1.5 : 1) * (r.slow > 0 ? 0.5 : 1) * (off ? 0.48 : 1);
       if (input.throttle > 0) r.speed += spec.acceleration * input.throttle * dt;
       if (input.brake > 0)
@@ -252,18 +245,40 @@ export class Race {
         dt;
       r.pos.x += Math.sin(r.heading) * r.speed * dt;
       r.pos.z += Math.cos(r.heading) * r.speed * dt;
-      const n = this.track.nearest(r.pos);
-      if (n.distance > this.track.width / 2 + 3) {
-        const center = this.track.samples[n.index],
+      const n = this.track.surface(r.pos, r.route);
+      if (n.distance > n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) {
+        const center = n.center,
           delta = r.pos.clone().sub(center);
-        r.pos.copy(center).addScaledVector(delta, (this.track.width / 2 + 3) / n.distance);
+        delta.y = 0;
+        r.pos
+          .copy(center)
+          .addScaledVector(delta, (n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) / n.distance);
         r.speed *= 0.93;
       }
+      const routeLap = Math.floor(Math.max(0, r.progress));
+      if (n.route === 'shortcut' && n.u > 0.2 && n.u < 0.8) r.shortcutVisitLap = routeLap;
+      if (
+        r.shortcutVisitLap === routeLap &&
+        r.shortcutCountLap !== routeLap &&
+        n.t >= this.track.shortcut.end - 0.015 &&
+        n.t < this.track.shortcut.end + 0.05
+      ) {
+        r.shortcutPasses++;
+        r.shortcutCountLap = routeLap;
+      }
+      r.route = n.route;
+      r.pos.y = n.height;
+      r.pitch = -Math.atan2(n.tangent.y, Math.hypot(n.tangent.x, n.tangent.z));
+      r.roll = n.bank;
       let delta = n.t - r.lastT;
       if (delta < -0.5) delta += 1;
       if (delta > 0.5) delta -= 1;
       // Only local, physical movement can advance race progress.
-      if (Math.abs(delta) * this.track.length < Math.abs(r.speed) * dt + 2) r.progress += delta;
+      if (
+        Math.abs(delta) * this.track.length <
+        Math.abs(r.speed) * dt * this.track.maxProgressRatio + 2
+      )
+        r.progress += delta;
       r.lastT = n.t;
       const expected = (r.checkpoint + 1) / 8;
       if (r.progress >= expected && r.progress < expected + 0.12) r.checkpoint++;
@@ -282,7 +297,10 @@ export class Race {
       if (r.stuck > 5) {
         this.respawn(r);
       }
-      if (r.pos.distanceTo(this.track.samples[n.index]) > 22) this.respawn(r);
+      if (n.distance > 22) this.respawn(r);
+      for (const obstacle of this.obstacles)
+        if (Math.hypot(r.pos.x - obstacle.pos.x, r.pos.z - obstacle.pos.z) < obstacle.radius + 1)
+          this.hit(r);
       if (!r.item)
         for (const box of this.pickups)
           if (box.cooldown === 0 && r.pos.distanceTo(box.pos) < 2.7) {
@@ -294,10 +312,23 @@ export class Race {
       for (const t of this.boosts) {
         let d = Math.abs(n.t - t);
         d = Math.min(d, 1 - d);
-        if (d * this.track.length < 3 && n.distance < this.track.width / 2 && r.boost < 0.15) {
+        if (
+          n.route === 'main' &&
+          d * this.track.length < 3 &&
+          n.distance < this.track.width / 2 &&
+          r.boost < 0.15
+        ) {
           r.boost = 1.1;
           this.onEvent('boost', r.id);
         }
+      }
+      if (
+        n.route === 'shortcut' &&
+        Math.abs(n.u - 0.5) * this.track.shortcut.length < 2 &&
+        r.boost < 0.15
+      ) {
+        r.boost = 1.3;
+        this.onEvent('boost', r.id);
       }
     }
     for (let i = 0; i < this.racers.length; i++)
@@ -326,7 +357,9 @@ export class Race {
         if (target && target.pos.distanceTo(h.pos) < 35)
           h.direction.lerp(target.pos.clone().sub(h.pos).normalize(), dt * 2).normalize();
         h.pos.addScaledVector(h.direction, 48 * dt);
-        if (this.track.nearest(h.pos).distance > this.track.width / 2 + 3) h.ttl = 0;
+        const surface = this.track.surface(h.pos);
+        h.pos.y = surface.height;
+        if (surface.distance > surface.width / 2 + 3) h.ttl = 0;
       }
       for (const r of this.racers)
         if (r.id !== h.owner && !r.finished && r.pos.distanceTo(h.pos) < 2.2) {
@@ -344,8 +377,15 @@ export class Race {
   }
   respawn(r: Racer) {
     const t = ((Math.max(0, r.progress) % 1) + 1) % 1;
-    r.pos.copy(this.track.at(t));
-    const tangent = this.track.tangent(t);
+    const branch =
+      r.route === 'shortcut' && t >= this.track.shortcut.start && t <= this.track.shortcut.end;
+    const u = branch
+      ? (t - this.track.shortcut.start) / (this.track.shortcut.end - this.track.shortcut.start)
+      : t;
+    r.route = branch ? 'shortcut' : 'main';
+    r.pos.copy(this.track.routeAt(r.route, u));
+    r.previous.copy(r.pos);
+    const tangent = this.track.routeTangent(r.route, u);
     r.heading = Math.atan2(tangent.x, tangent.z);
     r.speed = 0;
     r.stuck = 0;

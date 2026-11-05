@@ -178,6 +178,10 @@ function tracks() {
   );
   $('#back').onclick = setup;
   $('#start').onclick = () => start();
+  $('.tracks').insertAdjacentHTML(
+    'beforeend',
+    '<p class="notice">⚠ Les panneaux jaunes annoncent les obstacles mobiles. Les passages étroits bordés de jaune sont des raccourcis : un turbo y récompense une trajectoire précise, mais leurs bas-côtés ralentissent fortement.</p>',
+  );
 }
 function help() {
   screen = 'help';

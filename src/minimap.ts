@@ -18,5 +18,12 @@ export function minimapMarkup(track: Track, player: number) {
       return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
     })
     .join(' ');
-  return `<svg class="minimap" viewBox="0 0 200 200" role="img" aria-label="Mini-carte : six concurrents, joueur ${player + 1} en surbrillance"><polygon points="${points}" class="map-track"/>${racerColors.map((color, i) => `<g data-map-racer="${i}" class="${i === player ? 'map-current' : ''}"><circle r="${i === player ? 8 : 6}" fill="${color}"/><text text-anchor="middle" dominant-baseline="central">${i + 1}</text></g>`).join('')}</svg>`;
+  const branch = track.shortcut.samples
+    .filter((_, i) => i % 4 === 0)
+    .map((p) => {
+      const q = project(p.x, p.z);
+      return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+    })
+    .join(' ');
+  return `<svg class="minimap" viewBox="0 0 200 200" role="img" aria-label="Mini-carte : six concurrents, joueur ${player + 1} en surbrillance"><polygon points="${points}" class="map-track"/><polyline points="${branch}" class="map-shortcut"/>${racerColors.map((color, i) => `<g data-map-racer="${i}" class="${i === player ? 'map-current' : ''}"><circle r="${i === player ? 8 : 6}" fill="${color}"/><text text-anchor="middle" dominant-baseline="central">${i + 1}</text></g>`).join('')}</svg>`;
 }
