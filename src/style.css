@@ -12,6 +12,13 @@
   font-synthesis: none;
   font-weight: 500;
 }
+.character-icon {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  display: inline-block;
+  overflow: visible;
+}
 .minimap {
   position: absolute;
   right: 16px;

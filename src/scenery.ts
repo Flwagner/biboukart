@@ -30,7 +30,7 @@ export function scenery(track: Track) {
       if (track.nearest(p).distance - track.width / 2 >= 6 && branch >= 6) break;
       p.addScaledVector(normal, Math.sign(side) * 3);
     }
-    p.y = 0;
+    p.y = track.terrainHeight(p);
     return p;
   };
   if (track.index === 0) {
@@ -47,7 +47,7 @@ export function scenery(track: Track) {
       add(tower, '#493d36', [1, 1.8, 0.15], [0, 1.1, 2.4]);
       group.add(tower);
       const sails = new THREE.Group();
-      sails.position.set(p.x, 8, p.z + 2);
+      sails.position.set(p.x, p.y + 8, p.z + 2);
       for (let i = 0; i < 4; i++) {
         const sail = add(
           sails,
@@ -72,8 +72,8 @@ export function scenery(track: Track) {
     }
     for (let i = 0; i < 44; i++) {
       const p = location(i / 44, -13 - (i % 3) * 3);
-      add(group, i % 2 ? '#f1c16c' : '#f1d4d8', [0.5, 0.3, 0.5], [p.x, 0.6, p.z]);
-      add(group, '#4d8760', [0.1, 0.5, 0.1], [p.x, 0.25, p.z]);
+      add(group, i % 2 ? '#f1c16c' : '#f1d4d8', [0.5, 0.3, 0.5], [p.x, p.y + 0.6, p.z]);
+      add(group, '#4d8760', [0.1, 0.5, 0.1], [p.x, p.y + 0.25, p.z]);
     }
   } else if (track.index === 1) {
     for (const t of [0.12, 0.51, 0.83]) {

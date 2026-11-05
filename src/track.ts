@@ -21,10 +21,23 @@ export interface Obstacle {
   offset: number;
 }
 const shortcutDefinitions = [
-  { start: 0.13, end: 0.39, width: 5.2 },
+  { start: 0.08, end: 0.42, width: 5.2 },
   { start: 0.27, end: 0.44, width: 4.8 },
   { start: 0.27, end: 0.43, width: 5 },
 ];
+export class ShortcutCurve extends THREE.Curve<THREE.Vector3> {
+  constructor(
+    private base: THREE.CubicBezierCurve3,
+    private inward: THREE.Vector3,
+    private depth: number,
+  ) {
+    super();
+  }
+  getPoint(t: number, target = new THREE.Vector3()) {
+    this.base.getPoint(t, target);
+    return target.addScaledVector(this.inward, Math.sin(t * Math.PI) ** 2 * this.depth);
+  }
+}
 function projection(samples: THREE.Vector3[], closed: boolean, p: THREE.Vector3) {
   let best = Infinity,
     index = 0,
@@ -70,11 +83,13 @@ export class Track {
     start: number;
     end: number;
     width: number;
-    curve: THREE.CubicBezierCurve3;
+    curve: THREE.Curve<THREE.Vector3>;
     samples: THREE.Vector3[];
     length: number;
+    entryEndT: number;
   };
   maxProgressRatio: number;
+  bumps: { t: number; height: number; halfLength: number }[] = [];
   constructor(public index: number) {
     const d = trackDefinitions[index];
     this.width = d.width;
@@ -85,29 +100,99 @@ export class Track {
       0.3,
     );
     this.length = this.curve.getLength();
+    this.bumps = [
+      [0.68, 0.87],
+      [0.1, 0.83],
+      [0.18, 0.62],
+    ][index].map((t) => ({ t, height: [2.2, 2.6, 2][index], halfLength: 10 }));
     this.samples = Array.from({ length: 512 }, (_, i) => this.at(i / 512));
     this.tangents = Array.from({ length: 512 }, (_, i) => this.tangent(i / 512));
     const spec = shortcutDefinitions[index],
       a = this.at(spec.start),
       b = this.at(spec.end),
       arc = (spec.end - spec.start) * this.length;
-    const curve = new THREE.CubicBezierCurve3(
+    const base = new THREE.CubicBezierCurve3(
       a,
       a.clone().addScaledVector(this.tangent(spec.start), arc * 0.2),
       b.clone().addScaledVector(this.tangent(spec.end), -arc * 0.2),
       b,
     );
+    const inward = a
+      .clone()
+      .lerp(b, 0.5)
+      .sub(this.at((spec.start + spec.end) / 2));
+    inward.y = 0;
+    inward.normalize();
+    const curve = new ShortcutCurve(base, inward, [12, 20, 12][index]);
     this.shortcut = {
       ...spec,
       curve,
       length: curve.getLength(),
       samples: Array.from({ length: 129 }, (_, i) => curve.getPointAt(i / 128)),
+      entryEndT: spec.start + 0.025,
     };
+    this.shortcut.samples = Array.from({ length: 129 }, (_, i) =>
+      this.routeAt('shortcut', i / 128),
+    );
+    const detached = this.shortcut.samples.find(
+      (p) => this.nearest(p).distance > this.width / 2 + 0.3,
+    );
+    if (detached)
+      this.shortcut.entryEndT = Math.max(spec.start + 0.025, this.nearest(detached).t + 0.015);
     this.maxProgressRatio = Math.max(1, arc / this.shortcut.length) * 1.25;
   }
   elevation(t: number) {
-    const amplitude = [2.2, 3.4, 1.6][this.index];
-    return 4 + amplitude * Math.sin(t * Math.PI * 2) + amplitude * 0.32 * Math.sin(t * Math.PI * 4);
+    return this.baseElevation(t) + this.bumpHeight(t);
+  }
+  baseElevation(t: number) {
+    const amplitude = [4.5, 6.2, 3.7][this.index];
+    return 8 + amplitude * Math.sin(t * Math.PI * 2) + amplitude * 0.32 * Math.sin(t * Math.PI * 4);
+  }
+  bumpHeight(t: number) {
+    let height = 0;
+    for (const bump of this.bumps) {
+      const delta =
+        (Math.abs(
+          Math.atan2(Math.sin((t - bump.t) * Math.PI * 2), Math.cos((t - bump.t) * Math.PI * 2)),
+        ) /
+          (Math.PI * 2)) *
+        this.length;
+      if (delta < bump.halfLength)
+        height += bump.height * (1 + Math.cos((delta / bump.halfLength) * Math.PI)) * 0.5;
+    }
+    return height;
+  }
+  crossesBump(from: number, to: number) {
+    const forward = (to - from + 1) % 1;
+    return (
+      forward > 0 &&
+      forward < 0.08 &&
+      this.bumps.some((b) => {
+        const d = (b.t - from + 1) % 1;
+        return d > 0 && d <= forward;
+      })
+    );
+  }
+  terrainHeight(p: THREE.Vector3) {
+    if (this.index === 2 && Math.hypot(p.x, p.z) > 108) return -0.8;
+    const main = this.nearest(p),
+      branch = projection(this.shortcut.samples, false, p);
+    const useBranch = branch.distance - this.shortcut.width / 2 < main.distance - this.width / 2;
+    const distance = useBranch ? branch.distance : main.distance,
+      width = useBranch ? this.shortcut.width : this.width;
+    const height = useBranch ? branch.center.y : this.baseElevation(main.t);
+    let terrain =
+      Math.max(0, height - 0.65) * Math.exp(-((Math.max(0, distance - width / 2) / 28) ** 2));
+    // Carve beneath both corridors, not just the nearest one. A grid cell at a
+    // merge must never fill the lower road with the neighbouring hill's height.
+    if (main.distance < this.width / 2 + 6)
+      terrain = Math.min(
+        terrain,
+        this.baseElevation(main.t) - (Math.abs(this.bank(main.t)) * this.width) / 2 - 0.65,
+      );
+    if (branch.distance < this.shortcut.width / 2 + 6)
+      terrain = Math.min(terrain, branch.center.y - 0.65);
+    return Math.max(-0.1, terrain);
   }
   bank(t: number) {
     return Math.sin(t * Math.PI * 4) * 0.035;
@@ -127,7 +212,23 @@ export class Track {
     if (route === 'main') return this.at(u);
     if (u < 0) return this.at(this.shortcut.start + (u * this.shortcut.length) / this.length);
     if (u > 1) return this.at(this.shortcut.end + ((u - 1) * this.shortcut.length) / this.length);
-    return this.shortcut.curve.getPointAt(u);
+    const point = this.shortcut.curve.getPointAt(u),
+      main = projection(this.samples, true, point);
+    const merge =
+      1 - THREE.MathUtils.smoothstep(main.distance, this.width / 2 + 0.5, this.width / 2 + 6);
+    point.y = THREE.MathUtils.lerp(
+      point.y,
+      main.center.y + main.lateral * this.bank(main.u),
+      merge,
+    );
+    return point;
+  }
+  overlapsRoad(p: THREE.Vector3, route: Route, margin = 0) {
+    const projected =
+      route === 'main'
+        ? projection(this.samples, true, p)
+        : projection(this.shortcut.samples, false, p);
+    return projected.distance <= (route === 'main' ? this.width : this.shortcut.width) / 2 + margin;
   }
   routeTangent(route: Route, u: number) {
     return this.routeAt(route, u + 0.0001)
@@ -150,16 +251,15 @@ export class Track {
   surface(p: THREE.Vector3, hint: Route = 'main'): Surface {
     const main = projection(this.samples, true, p),
       branch = projection(this.shortcut.samples, false, p);
-    const keepBranch =
-      hint === 'shortcut' &&
-      branch.u > 0.015 &&
-      branch.u < 0.985 &&
-      branch.distance < this.shortcut.width / 2 + 5;
+    const onMain = main.distance <= this.width / 2 + 0.05;
+    const onBranch = branch.distance <= this.shortcut.width / 2 + 0.05;
+    // A junction is the union of both paved surfaces. Never clamp a kart that is
+    // still on the main road against the narrower shortcut's invisible boundary.
+    const keepBranch = hint === 'shortcut' && onBranch && branch.u > 0.015 && branch.u < 0.985;
     const chooseBranch =
       keepBranch ||
-      (branch.distance < this.shortcut.width / 2 + 1 &&
-        ((branch.distance < main.distance - 0.8 && main.distance > 1.2) ||
-          main.distance > this.width / 2));
+      (!onMain &&
+        (onBranch || branch.distance - this.shortcut.width / 2 < main.distance - this.width / 2));
     const chosen = chooseBranch ? branch : main,
       route = chooseBranch ? 'shortcut' : 'main';
     const t = chooseBranch
@@ -170,7 +270,10 @@ export class Track {
       ...chosen,
       route,
       t,
-      height: chosen.center.y + chosen.lateral * bank,
+      height:
+        chosen.distance > (chooseBranch ? this.shortcut.width : this.width) / 2
+          ? this.terrainHeight(p)
+          : chosen.center.y + chosen.lateral * bank,
       width: chooseBranch ? this.shortcut.width : this.width,
       bank,
     };
@@ -179,7 +282,13 @@ export class Track {
     if (surface.route === 'shortcut')
       return this.routeAt('shortcut', surface.u + distance / this.shortcut.length);
     const target = surface.t + distance / this.length;
-    if (preferShortcut && target > this.shortcut.start && target < this.shortcut.end)
+    // A missed entry must stay on the main road, never aim across the gap mid-corner.
+    if (
+      preferShortcut &&
+      surface.t < this.shortcut.entryEndT &&
+      target > this.shortcut.start &&
+      target < this.shortcut.end
+    )
       return this.routeAt(
         'shortcut',
         (target - this.shortcut.start) / (this.shortcut.end - this.shortcut.start),

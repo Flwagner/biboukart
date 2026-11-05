@@ -1,8 +1,9 @@
+import { petPortrait } from './portraits';
 export const characters = [
   { name: 'Roxy', animal: 'Renard', icon: '🦊', color: '#ed8445' },
-  { name: 'Pompon', animal: 'Lapin', icon: '🐰', color: '#efd9ec' },
+  { name: 'Couscous', animal: 'Lapin', icon: petPortrait('rabbit'), color: '#171a20' },
   { name: 'Bao', animal: 'Panda', icon: '🐼', color: '#e4ecec' },
-  { name: 'Bip', animal: 'Robot', icon: '🤖', color: '#65ced7' },
+  { name: 'Raclette', animal: 'Chat', icon: petPortrait('cat'), color: '#f7f7f1' },
 ];
 export const karts = [
   {

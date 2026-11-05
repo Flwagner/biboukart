@@ -42,6 +42,8 @@ describe('relief, shortcuts and mobile obstacles', () => {
       expect(track.at(0).distanceTo(track.at(1))).toBeLessThan(0.0001);
       expect(s.length).toBeLessThan((s.end - s.start) * track.length);
       expect(s.width).toBeLessThan(track.width * 0.5);
+      const separation = track.nearest(track.routeAt('shortcut', 0.5)).distance;
+      expect(separation).toBeGreaterThan(track.width / 2 + s.width / 2 + 7);
       expect(track.routeAt('shortcut', 0).distanceTo(track.at(s.start))).toBeLessThan(0.001);
       expect(track.routeAt('shortcut', 1).distanceTo(track.at(s.end))).toBeLessThan(0.001);
       expect(track.routeTangent('shortcut', 0.0001).dot(track.tangent(s.start))).toBeGreaterThan(
@@ -62,7 +64,7 @@ describe('relief, shortcuts and mobile obstacles', () => {
     },
   );
   it.each([0, 1, 2])(
-    'six drivers finish track %i with shortcuts and grounded karts',
+    'six drivers finish track %i with shortcuts, grounded contact and valid flight',
     (index) => {
       const race = new Race(index, [player]);
       race.racers.forEach((r) => (r.human = true));
@@ -76,7 +78,11 @@ describe('relief, shortcuts and mobile obstacles', () => {
           for (const racer of race.racers)
             if (!racer.finished) {
               const height = race.track.surface(racer.pos, racer.route).height;
-              expect(Math.abs(racer.pos.y - height)).toBeLessThan(0.25);
+              if (!racer.airborne) expect(Math.abs(racer.pos.y - height)).toBeLessThan(0.25);
+              else {
+                expect(racer.pos.y - height).toBeGreaterThan(-0.25);
+                expect(Number.isFinite(racer.verticalSpeed)).toBe(true);
+              }
             }
       }
       expect(

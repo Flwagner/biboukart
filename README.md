@@ -6,10 +6,10 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 
 - **PC : 1 à 4 humains** sur un même appareil, clavier partagé et/ou manettes.
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
-- 4 personnages, 4 karts aux caractéristiques différentes, 3 circuits.
+- 4 personnages : Roxy le renard, Couscous le lapin noir, Bao le panda et Raclette le chat blanc ; 4 karts aux caractéristiques différentes et 3 circuits.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
-- Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant animés, réactions des pilotes et podium 3D.
-- Moulins, arches rocheuses et palmiers ; routes vallonnées sans sauts, obstacles mobiles annoncés et raccourcis étroits récompensés par un turbo.
+- Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
+- Moulins, arches rocheuses et palmiers ; terrain vallonné, bosses permettant de vrais sauts, obstacles mobiles annoncés et raccourcis étroits éloignés du tracé principal.
 - Bots faciles, normaux ou difficiles, au choix avant la course. Le réglage est sauvegardé et conservé pour la revanche.
 - Boîtes cadeaux : missile guidé, turbo, bouclier, piège. Bandes de turbo sur la route.
 - Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Variante discrète avec les animations réduites.
@@ -76,6 +76,9 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | ------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `src/config.ts`                                   | Personnages, karts, pistes, objets et paramètres validés                          |
 | `src/race.ts`                                     | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets              |
+| `src/flight.ts`                                   | Impulsion des bosses, gravité, vol et atterrissage                                |
+| `src/road.ts` / `src/terrain.ts`                  | Maillages de route et de relief, raccords et talus hors des zones asphaltées      |
+| `src/portraits.ts`                                | Portraits SVG locaux de Couscous et Raclette                                      |
 | `src/track.ts`                                    | Relief, projection des routes, raccourcis et mouvement déterministe des obstacles |
 | `src/scenery.ts`                                  | Décors propres à chaque univers et modèles des obstacles                          |
 | `src/minimap.ts` / `src/animation.ts`             | Carte du circuit et articulation des karts/pilotes                                |
@@ -88,7 +91,7 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/storage.ts`                                  | Dernières sélections ; tolérance au stockage indisponible                         |
 | `src/style.css`                                   | Interface française adaptative et commandes tactiles                              |
 
-Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de physique réaliste, drift, sauts ou routes superposées. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
+Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de drift ou de routes superposées. Les bosses déclenchent un saut à partir de 14 m/s : impulsion, gravité, direction réduite en l'air puis atterrissage amorti. L'ombre reste au sol. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
 
 La graine d'attribution des objets est déterministe. Les bots utilisent les mêmes limites physiques, collisions et règles d'objets que les humains. La difficulté change leur vitesse visée (70 %, 89 %, 100 % de la vitesse du kart), l'anticipation, la fréquence d'utilisation des objets et la prise des raccourcis, sans sur-vitesse cachée ou rattrapage artificiel. Le solo reste une course, pas un mode contre-la-montre.
 

@@ -95,10 +95,12 @@ describe('arcade simulation', () => {
     const p = r.racers[0];
     p.item = 'trap';
     r.use(p);
+    const originalTrap = r.hazards[0];
     p.shield = 1;
     p.boost = 0.5;
     tick(r, 16);
-    expect(r.hazards).toHaveLength(0);
+    expect(r.hazards).not.toContain(originalTrap);
+    expect(originalTrap.ttl).toBeLessThanOrEqual(0);
     expect(p.shield).toBe(0);
     expect(p.boost).toBe(0);
   });

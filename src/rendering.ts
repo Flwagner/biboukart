@@ -5,13 +5,19 @@ import { Race, Track } from './race';
 import { RaceEffects } from './effects';
 import { animateKart, react, type KartRig } from './animation';
 import { scenery, obstacleModel } from './scenery';
-import type { Route } from './track';
+import { createTerrainGeometry } from './terrain';
+import { createRoadGeometry } from './road';
 const mat = (color: THREE.ColorRepresentation) =>
   new THREE.MeshLambertMaterial({ color, flatShading: true });
 const materialCache = new Map<string, THREE.Material>();
 function material(color: string) {
   if (!materialCache.has(color)) materialCache.set(color, mat(color));
   return materialCache.get(color)!;
+}
+function lampMaterial(color: string) {
+  const key = `lamp:${color}`;
+  if (!materialCache.has(key)) materialCache.set(key, new THREE.MeshBasicMaterial({ color }));
+  return materialCache.get(key)!;
 }
 function mesh(geometry: THREE.BufferGeometry, color: string, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geometry, material(color));
@@ -72,11 +78,26 @@ export function makeKart(character: number, kart: number, id: number) {
     spec = karts[kart],
     c = characters[character];
   const driver = new THREE.Group();
+  const rearLights = new THREE.Group(),
+    rearLightMaterial = new THREE.MeshBasicMaterial({ color: '#842833' });
   const wheels: KartRig['wheels'] = [];
   block(group, spec.color, [1.65, 0.55, 2.6], [0, 0.65, 0]);
   block(group, '#233044', [1.1, 0.4, 0.85], [0, 0.95, -0.45]);
   block(group, spec.color, [1.9, 0.18, 0.3], [0, 0.7, -1.3]);
-  block(group, '#fff3c7', [1.35, 0.15, 0.1], [0, 0.7, 1.33]);
+  block(group, '#273442', [1.65, 0.28, 0.12], [0, 0.67, 1.35]);
+  block(group, '#15191e', [0.07, 0.32, 0.07], [0, 1.03, 0.75]).rotation.x = -0.4;
+  for (const side of [-1, 1]) {
+    block(group, '#273442', [0.47, 0.29, 0.1], [side * 0.58, 0.7, 1.43]);
+    const front = new THREE.Mesh(box, lampMaterial('#fff1b8'));
+    front.position.set(side * 0.58, 0.7, 1.5);
+    front.scale.set(0.34, 0.2, 0.06);
+    group.add(front);
+    block(group, '#273442', [0.44, 0.26, 0.08], [side * 0.62, 0.7, -1.47]);
+    const rear = new THREE.Mesh(box, rearLightMaterial);
+    rear.position.set(side * 0.62, 0.7, -1.53);
+    rear.scale.set(0.32, 0.16, 0.05);
+    rearLights.add(rear);
+  }
   for (const x of [-0.94, 0.94])
     for (const z of [-0.85, 0.85]) {
       const w = mesh(wheel, '#263247');
@@ -92,27 +113,74 @@ export function makeKart(character: number, kart: number, id: number) {
   driver.add(head);
   block(driver, c.color, [0.7, 0.6, 0.65], [0, 1.2, 0]);
   for (const x of [-0.23, 0.23]) {
-    const eye = mesh(sphere, '#152337', x, 1.9, 0.49);
+    const eye = mesh(
+      sphere,
+      character === 1 ? '#fff0cb' : character === 3 ? '#8ebfa9' : '#152337',
+      x,
+      1.9,
+      0.49,
+    );
     eye.scale.set(0.085, 0.12, 0.07);
     driver.add(eye);
+    if (character === 1 || character === 3) {
+      const pupil = mesh(sphere, '#152337', x, 1.9, 0.55);
+      pupil.scale.set(0.035, 0.08, 0.02);
+      driver.add(pupil);
+    }
   }
-  if (character < 3)
+  {
     for (const x of [-0.4, 0.4]) {
+      const pointed = character === 0 || character === 3;
       const ear = mesh(
-        character === 0 ? new THREE.ConeGeometry(0.23, 0.6, 4) : sphere,
+        pointed ? new THREE.ConeGeometry(0.23, character === 3 ? 0.45 : 0.6, 4) : sphere,
         character === 2 ? '#263247' : c.color,
         x,
         2.35,
         0,
       );
-      if (character !== 0) ear.scale.set(0.2, character === 1 ? 0.65 : 0.2, 0.2);
+      if (!pointed) ear.scale.set(0.2, character === 1 ? 0.65 : 0.2, 0.2);
       driver.add(ear);
+      if (character === 1) {
+        const inside = mesh(sphere, '#b18f9d', x, 2.47, 0.15);
+        inside.scale.set(0.1, 0.44, 0.06);
+        driver.add(inside);
+      }
+      if (character === 3) {
+        const inside = mesh(new THREE.ConeGeometry(0.13, 0.27, 3), '#e6b8bd', x, 2.35, 0.15);
+        inside.scale.z = 0.2;
+        driver.add(inside);
+      }
     }
+  }
   if (character === 3) {
-    block(driver, '#ed7279', [0.12, 0.45, 0.12], [0, 2.5, 0]);
-    const light = mesh(sphere, '#ffd866', 0, 2.8, 0);
-    light.scale.setScalar(0.16);
-    driver.add(light);
+    const nose = mesh(sphere, '#d994a4', 0, 1.67, 0.56);
+    nose.scale.set(0.09, 0.06, 0.045);
+    driver.add(nose);
+    for (const side of [-1, 1])
+      for (const row of [-1, 0, 1]) {
+        const whisker = block(
+          driver,
+          '#8b969c',
+          [0.36, 0.018, 0.025],
+          [side * 0.43, 1.67 + row * 0.09, 0.53],
+        );
+        whisker.rotation.z = side * row * 0.16;
+      }
+    const tail = mesh(
+      new THREE.TorusGeometry(0.35, 0.09, 6, 12, Math.PI * 1.4),
+      c.color,
+      0.45,
+      1.4,
+      -0.5,
+    );
+    driver.add(tail);
+  } else if (character === 1) {
+    const nose = mesh(sphere, '#d994a4', 0, 1.67, 0.55);
+    nose.scale.set(0.08, 0.055, 0.04);
+    driver.add(nose);
+    const tail = mesh(sphere, c.color, 0, 1.15, -0.48);
+    tail.scale.setScalar(0.23);
+    driver.add(tail);
   }
   const flag = mesh(
     new THREE.ConeGeometry(0.23, 0.5, 3),
@@ -134,15 +202,18 @@ export function makeKart(character: number, kart: number, id: number) {
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.025;
-  group.add(shadow);
   batchStatic(group);
   batchStatic(driver);
-  const steering = mesh(new THREE.TorusGeometry(0.28, 0.045, 5, 12), '#263247', 0, 1.35, 0.6);
-  steering.rotation.x = -0.45;
-  group.add(driver, steering, ...wheels.map((w) => w.pivot));
+  batchStatic(rearLights);
+  const steering = mesh(new THREE.TorusGeometry(0.26, 0.045, 6, 16), '#15191e', 0, 1.22, 0.85);
+  steering.rotation.x = -0.5;
+  group.add(driver, steering, shadow, rearLights, ...wheels.map((w) => w.pivot));
   group.userData.rig = {
     driver,
     steering,
+    rearLights,
+    rearLightMaterial,
+    shadow,
     wheels,
     wheelAngle: 0,
     reaction: null,
@@ -262,81 +333,9 @@ export class Renderer {
       island.scale.z = 0.95;
       this.world.add(island);
     }
-    const vertices: number[] = [],
-      colors: number[] = [];
-    const roadColor = new THREE.Color('#59636c'),
-      edgeColors = [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')];
-    const segments = 512;
-    const ribbon = (
-      left: number,
-      right: number,
-      height: number,
-      colorAt: (i: number) => THREE.Color,
-      route: Route = 'main',
-      embankment = false,
-    ) => {
-      for (let i = 0; i < segments; i++) {
-        const a = track.routeAt(route, i / segments),
-          b = track.routeAt(route, (i + 1) / segments),
-          ta = track.routeTangent(route, i / segments),
-          tb = track.routeTangent(route, (i + 1) / segments);
-        const na = new THREE.Vector3(ta.z, 0, -ta.x).normalize(),
-          nb = new THREE.Vector3(tb.z, 0, -tb.x).normalize();
-        const ps = [
-          a.clone().addScaledVector(na, left),
-          a.clone().addScaledVector(na, right),
-          b.clone().addScaledVector(nb, left),
-          b.clone().addScaledVector(nb, right),
-        ];
-        if (route === 'main')
-          ps.forEach(
-            (p, j) =>
-              (p.y += track.bank((i + (j > 1 ? 1 : 0)) / segments) * (j % 2 ? right : left)),
-          );
-        if (embankment) {
-          ps[1].y = -0.1;
-          ps[3].y = -0.1;
-        }
-        const c = colorAt(i);
-        for (const j of [0, 2, 1, 1, 2, 3]) {
-          vertices.push(ps[j].x, ps[j].y + height, ps[j].z);
-          colors.push(c.r, c.g, c.b);
-        }
-      }
-    };
-    ribbon(-track.width / 2, track.width / 2, 0.02, () => roadColor);
-    for (const route of ['main', 'shortcut'] as const) {
-      const width = route === 'main' ? track.width : track.shortcut.width;
-      for (const side of [-1, 1])
-        ribbon(
-          side * (width / 2 + 0.7),
-          side * (width / 2 + 6),
-          0,
-          () => new THREE.Color(def.ground),
-          route,
-          true,
-        );
-    }
-    ribbon(-track.shortcut.width / 2, track.shortcut.width / 2, 0.025, () => roadColor, 'shortcut');
-    for (const side of [-1, 1])
-      ribbon(
-        (side * track.shortcut.width) / 2,
-        side * (track.shortcut.width / 2 + 0.25),
-        0.04,
-        () => new THREE.Color('#d6d5c5'),
-        'shortcut',
-      );
-    for (const side of [-1, 1])
-      ribbon(
-        (side * track.width) / 2,
-        side * (track.width / 2 + 0.7),
-        0.035,
-        (i) => edgeColors[Math.floor(i / 5) % 2],
-      );
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
+    const terrainGeometry = createTerrainGeometry(track);
+    this.world.add(mesh(terrainGeometry, def.ground));
+    const geo = createRoadGeometry(track);
     this.world.add(
       new THREE.Mesh(
         geo,
@@ -391,6 +390,26 @@ export class Renderer {
       }
       this.world.add(g);
     }
+    // White chevrons identify raised crests; yellow remains reserved for turbos.
+    for (const bump of track.bumps)
+      for (const offset of [-4, -2, 0]) {
+        const t = bump.t + offset / track.length,
+          p = track.at(t),
+          tangent = track.tangent(t),
+          mark = new THREE.Group();
+        mark.position.copy(p);
+        mark.rotation.set(
+          -Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)),
+          Math.atan2(tangent.x, tangent.z),
+          track.bank(t),
+          'YXZ',
+        );
+        for (const side of [-1, 1]) {
+          const stripe = block(mark, '#f2eee0', [2.5, 0.025, 0.22], [side * 1, 0.06, 0]);
+          stripe.rotation.y = side * 0.4;
+        }
+        this.world.add(mark);
+      }
     // Deterministic decoration, kept outside the driving corridor.
     let seed = 231;
     const random = () => {
@@ -411,6 +430,7 @@ export class Renderer {
       )
         continue;
       const s = 1 + random() * 2;
+      p.y = track.terrainHeight(p);
       if (track.index === 1) {
         const matrix = new THREE.Matrix4().compose(
           p.clone().add(new THREE.Vector3(0, s * 2, 0)),
@@ -430,7 +450,7 @@ export class Renderer {
           new THREE.CylinderGeometry(0.22, 0.35, s * 2, 5),
           '#92704d',
           p.x,
-          s,
+          s + p.y,
           p.z,
         );
         this.world.add(trunk);
@@ -510,6 +530,10 @@ export class Renderer {
     this.cameras = [];
     for (const r of race.racers) {
       const g = makeKart(r.config.character, r.config.kart, r.id);
+      const shadow = (g.userData.rig as KartRig).shadow;
+      this.world.add(shadow);
+      shadow.position.copy(r.pos);
+      shadow.position.y = r.groundHeight + 0.04;
       const shield = new THREE.Mesh(
         new THREE.IcosahedronGeometry(1.85, 1),
         new THREE.MeshBasicMaterial({
@@ -605,12 +629,29 @@ export class Renderer {
       for (const r of race.racers) {
         const g = this.kartMeshes[r.id];
         g.position.lerpVectors(r.previous, r.pos, alpha);
-        g.rotation.set(r.pitch, r.heading, r.roll, 'YXZ');
-        animateKart(g.userData.rig, effectsDt, r.speed, r.steering, this.reduced);
+        g.rotation.set(
+          r.airborne
+            ? THREE.MathUtils.clamp(
+                -Math.atan2(r.verticalSpeed, Math.max(8, Math.abs(r.speed))) * 0.7,
+                -0.28,
+                0.28,
+              )
+            : r.pitch,
+          r.heading,
+          r.roll,
+          'YXZ',
+        );
+        animateKart(g.userData.rig, effectsDt, r.speed, r.steering, this.reduced, r.braking);
         this.shieldMeshes[r.id].visible = r.shield > 0;
         this.shieldMeshes[r.id].rotation.y = this.reduced ? 0 : this.time * 0.5;
         g.visible = this.reduced || r.immune <= 0 || Math.sin(this.time * 24) > -0.35;
         g.scale.setScalar(r.shield > 0 ? 1.04 : 1);
+        if (!this.reduced && r.landingTime > 0)
+          g.scale.y *= 1 - 0.12 * Math.sin((r.landingTime / 0.28) * Math.PI);
+        const rig = g.userData.rig as KartRig;
+        rig.shadow.position.set(g.position.x, r.groundHeight + 0.04, g.position.z);
+        rig.shadow.scale.setScalar(1 / (1 + Math.max(0, r.pos.y - r.groundHeight) * 0.08));
+        rig.shadow.material.opacity = 0.22 / (1 + Math.max(0, r.pos.y - r.groundHeight) * 0.2);
         g.position.y += r.boost > 0 && !this.reduced ? Math.sin(this.time * 30) * 0.025 : 0;
       }
       race.pickups.forEach((p, i) => {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { karts, difficulties, type Difficulty, type Item, type PlayerConfig } from './config';
 import { Track, type Route, type Obstacle } from './track';
 export { Track } from './track';
+import { updateFlight } from './flight';
 export interface Input {
   throttle: number;
   brake: number;
@@ -18,12 +19,19 @@ export interface Racer {
   heading: number;
   speed: number;
   steering: number;
+  braking: number;
   route: Route;
   pitch: number;
   roll: number;
   shortcutPasses: number;
   shortcutVisitLap: number;
   shortcutCountLap: number;
+  airborne: boolean;
+  verticalSpeed: number;
+  landingTime: number;
+  jumpCooldown: number;
+  takeoffs: number;
+  groundHeight: number;
   progress: number;
   lastT: number;
   checkpoint: number;
@@ -85,12 +93,19 @@ export class Race {
         heading: Math.atan2(tangent.x, tangent.z),
         speed: 0,
         steering: 0,
+        braking: 0,
         route: 'main',
         pitch: 0,
         roll: 0,
         shortcutPasses: 0,
         shortcutVisitLap: -1,
         shortcutCountLap: -1,
+        airborne: false,
+        verticalSpeed: 0,
+        landingTime: 0,
+        jumpCooldown: 0,
+        takeoffs: 0,
+        groundHeight: p.y,
         progress: t - 1,
         lastT: t,
         checkpoint: 0,
@@ -181,12 +196,20 @@ export class Race {
             Math.sign(delta.dot(new THREE.Vector3(Math.cos(r.heading), 0, -Math.sin(r.heading)))) *
             -0.35;
       }
-    const desiredSpeed =
+    const later = this.track.target(n, lookAhead * 1.5, preferShortcut),
+      halfway = this.track.target(n, lookAhead * 0.75, preferShortcut);
+    const headingA = Math.atan2(halfway.x - r.pos.x, halfway.z - r.pos.z),
+      headingB = Math.atan2(later.x - halfway.x, later.z - halfway.z);
+    const curvature = Math.abs(wrap(headingB - headingA)) / Math.max(4, lookAhead * 0.75);
+    const cornerLimit = curvature > 0.001 ? (spec.handling * 0.72) / curvature : Infinity;
+    const desiredSpeed = Math.min(
+      cornerLimit,
       spec.speed *
-      profile.speed *
-      (r.boost > 0 ? 1.5 : 1) *
-      (r.slow > 0 ? 0.5 : 1) *
-      (Math.abs(angle) > 0.6 ? profile.cornerSpeed : 1);
+        profile.speed *
+        (r.boost > 0 ? 1.5 : 1) *
+        (r.slow > 0 ? 0.5 : 1) *
+        (Math.abs(angle) > 0.6 ? profile.cornerSpeed : 1),
+    );
     return {
       throttle: r.speed < desiredSpeed ? 1 : 0,
       brake:
@@ -254,14 +277,16 @@ export class Race {
       const input = r.human ? (inputs[r.id] ?? idleInput()) : this.ai(r),
         spec = karts[r.config.kart];
       r.steering = input.steer;
+      r.braking = THREE.MathUtils.clamp(input.brake, 0, 1);
       if (input.use) this.use(r);
       const near = this.track.surface(r.pos, r.route),
         off = near.distance > near.width / 2;
       const max = spec.speed * (r.boost > 0 ? 1.5 : 1) * (r.slow > 0 ? 0.5 : 1) * (off ? 0.48 : 1);
-      if (input.throttle > 0) r.speed += spec.acceleration * input.throttle * dt;
+      if (input.throttle > 0)
+        r.speed += spec.acceleration * input.throttle * dt * (r.airborne ? 0.25 : 1);
       if (input.brake > 0)
-        r.speed -= dt * (r.speed > 1 ? 25 : spec.acceleration * 0.7) * input.brake;
-      if (!input.throttle && !input.brake) r.speed *= Math.exp(-dt * 0.7);
+        r.speed -= dt * (r.airborne ? 2 : r.speed > 1 ? 25 : spec.acceleration * 0.7) * input.brake;
+      if (!input.throttle && !input.brake) r.speed *= Math.exp(-dt * (r.airborne ? 0.08 : 0.7));
       r.speed = THREE.MathUtils.clamp(r.speed, -7, max);
       // Forward is (sin(heading), 0, cos(heading)): increasing heading turns left.
       r.heading -=
@@ -269,10 +294,11 @@ export class Race {
         spec.handling *
         Math.min(1, Math.abs(r.speed) / 9) *
         (r.speed < 0 ? -1 : 1) *
+        (r.airborne ? 0.45 : 1) *
         dt;
       r.pos.x += Math.sin(r.heading) * r.speed * dt;
       r.pos.z += Math.cos(r.heading) * r.speed * dt;
-      const n = this.track.surface(r.pos, r.route);
+      let n = this.track.surface(r.pos, r.route);
       if (n.distance > n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) {
         const center = n.center,
           delta = r.pos.clone().sub(center);
@@ -281,6 +307,7 @@ export class Race {
           .copy(center)
           .addScaledVector(delta, (n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) / n.distance);
         r.speed *= 0.93;
+        n = this.track.surface(r.pos, r.route);
       }
       const routeLap = Math.floor(Math.max(0, r.progress));
       if (n.route === 'shortcut' && n.u > 0.2 && n.u < 0.8) r.shortcutVisitLap = routeLap;
@@ -293,8 +320,12 @@ export class Race {
         r.shortcutPasses++;
         r.shortcutCountLap = routeLap;
       }
+      const launch =
+        r.route === 'main' && n.route === 'main' && this.track.crossesBump(r.lastT, n.t);
       r.route = n.route;
-      r.pos.y = n.height;
+      r.groundHeight = n.height;
+      const flightEvent = updateFlight(r, n.height, dt, launch);
+      if (flightEvent) this.onEvent(flightEvent, r.id);
       r.pitch = -Math.atan2(n.tangent.y, Math.hypot(n.tangent.x, n.tangent.z));
       r.roll = n.bank;
       let delta = n.t - r.lastT;
@@ -326,7 +357,10 @@ export class Race {
       }
       if (n.distance > 22) this.respawn(r);
       for (const obstacle of this.obstacles)
-        if (Math.hypot(r.pos.x - obstacle.pos.x, r.pos.z - obstacle.pos.z) < obstacle.radius + 1)
+        if (
+          r.pos.y - obstacle.pos.y < obstacle.radius + 1 &&
+          Math.hypot(r.pos.x - obstacle.pos.x, r.pos.z - obstacle.pos.z) < obstacle.radius + 1
+        )
           this.hit(r);
       if (!r.item)
         for (const box of this.pickups)
@@ -340,6 +374,7 @@ export class Race {
         let d = Math.abs(n.t - t);
         d = Math.min(d, 1 - d);
         if (
+          !r.airborne &&
           n.route === 'main' &&
           d * this.track.length < 3 &&
           n.distance < this.track.width / 2 &&
@@ -350,6 +385,7 @@ export class Race {
         }
       }
       if (
+        !r.airborne &&
         n.route === 'shortcut' &&
         Math.abs(n.u - 0.5) * this.track.shortcut.length < 2 &&
         r.boost < 0.15
@@ -418,6 +454,11 @@ export class Race {
     r.stuck = 0;
     r.lastT = t;
     r.immune = 2;
+    r.airborne = false;
+    r.verticalSpeed = 0;
+    r.landingTime = 0;
+    r.jumpCooldown = 0.8;
+    r.groundHeight = r.pos.y;
   }
 }
 export function wrap(a: number) {

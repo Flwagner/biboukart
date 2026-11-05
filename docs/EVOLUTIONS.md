@@ -1,5 +1,22 @@
 # Évolutions : trois lots autonomes
 
+## Retours suivants — Lisibilité, relief, sauts et personnages
+
+- Piquets et portiques des raccourcis supprimés. Asphalte et bordures neutres, comme la route principale ; le jaune au sol indique uniquement les turbos.
+- Raccourcis déportés vers l'intérieur, séparés de la route principale par du terrain, plutôt que simples voies adjacentes. Le raccord reste tangent et leur longueur reste inférieure à celle du détour principal.
+- Relief accentué et terrain 3D sous les pistes. Deux bosses par circuit, signalées par des chevrons blancs, avec impulsion à vitesse suffisante, gravité, vol et réception. L'ombre reste sur la route et le kart se comprime brièvement à l'atterrissage ; la variante animations réduites supprime cette compression, pas la physique du saut.
+- IA adaptée aux virages des nouvelles branches et aux sauts. Une entrée manquée n'incite plus un bot à traverser le terrain pour rejoindre le raccourci.
+- **Couscous**, lapin noir, remplace Pompon à l'indice 1. **Raclette**, chat blanc avec oreilles et moustaches, remplace le robot à l'indice 3. Les indices sauvegardés sont conservés ; portraits et modèles 3D reflètent les nouvelles couleurs.
+- Libellés simplifiés en « Couscous · Lapin » et « Raclette · Chat ». Le volant noir est centré devant le pilote ; la queue blanche de Raclette est conservée. Les roues avant et le volant conservent leur braquage animé.
+- Deux phares blanc chaud/jaune à l'avant et deux feux rouges à l'arrière de chaque kart. Matériaux lumineux sans ajouter de sources d'éclairage coûteuses par concurrent/vue.
+- Les feux arrière passent du rouge sombre au rouge vif quand le pilote freine, puis reviennent à leur intensité normale au relâchement. Matériaux indépendants par kart pour éviter qu'un joueur n'allume les feux des autres ; retour conservé en mode animations réduites.
+- Correction du mur invisible aux jonctions : la route principale reste prioritaire tant que le kart y roule. Les raccords utilisent l'union des deux surfaces carrossables, sans rabattre un kart sur les limites étroites du raccourci voisin. Les tests couvrent les deux côtés de la route, les entrées et sorties, et les trois circuits.
+- Correction des coupures visuelles et faux rétrécissements : altitude des raccords alignée, terrain creusé sous les deux routes, talus découpés hors de toute surface asphaltée (y compris les boucles d'un même virage), interruption des bordures aux jonctions. Les obstacles mobiles sont conservés. Les tests examinent aussi les triangles réellement affichés du terrain et la largeur de chaque segment de route.
+
+Les sections ci-dessous décrivent l'historique des trois lots, avant ces ajustements demandés par l'utilisateur.
+
+Validation des ajustements : **103 tests unitaires**, dont contrôle des triangles de terrain sous les deux routes et de la largeur constante de chaque segment ; **28 scénarios navigateur**, incluant sauts, nouveaux personnages, jonctions sans mur invisible et feux stop indépendants. Build et test statique sous `/biboukart/` sans erreur HTTP/JavaScript ni requête externe. Les captures `junction-0.png` à `junction-2.png` montrent les trois raccords dégagés ; le test graphique garde les obstacles mobiles.
+
 ## Lot 1 — Interface et animations
 
 - Mini-carte par joueur, six concurrents numérotés, pilote courant en surbrillance.

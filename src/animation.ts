@@ -1,9 +1,14 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
+const brakeIdle = new THREE.Color('#842833'),
+  brakeBright = new THREE.Color('#ff5148');
 export type Reaction = 'pickup' | 'hit' | 'finish';
 export interface KartRig {
   driver: THREE.Group;
-  wheels: { pivot: THREE.Group; wheel: THREE.Mesh; front: boolean }[];
   steering: THREE.Mesh;
+  rearLights: THREE.Group;
+  rearLightMaterial: THREE.MeshBasicMaterial;
+  wheels: { pivot: THREE.Group; wheel: THREE.Mesh; front: boolean }[];
+  shadow: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   wheelAngle: number;
   reaction: Reaction | null;
   age: number;
@@ -20,7 +25,9 @@ export function animateKart(
   speed: number,
   steer: number,
   reduced: boolean,
+  brake = 0,
 ) {
+  rig.rearLightMaterial.color.copy(brake > 0.05 ? brakeBright : brakeIdle);
   rig.age += dt;
   if (!reduced) rig.wheelAngle = (rig.wheelAngle + (speed * dt) / 0.43) % (Math.PI * 2);
   for (const { pivot, wheel, front } of rig.wheels) {
