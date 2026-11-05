@@ -4,10 +4,15 @@ export const characters = [
   { name: 'Couscous', animal: 'Lapin', icon: petPortrait('rabbit'), color: '#171a20' },
   { name: 'Bao', animal: 'Panda', icon: '🐼', color: '#e4ecec' },
   { name: 'Raclette', animal: 'Chat', icon: petPortrait('cat'), color: '#f7f7f1' },
+  { name: 'Glaçon', animal: 'Pingouin', icon: '🐧', color: '#34465b' },
+  { name: 'Mochi', animal: 'Koala', icon: '🐨', color: '#a9b5c4' },
+  { name: 'Pistache', animal: 'Grenouille', icon: '🐸', color: '#80c966' },
+  { name: 'Truffe', animal: 'Cochon', icon: '🐷', color: '#efabba' },
 ];
 export const karts = [
   {
     name: 'Comète',
+    shape: 'classic',
     description: 'Le parfait équilibre',
     speed: 29,
     acceleration: 14,
@@ -16,6 +21,7 @@ export const karts = [
   },
   {
     name: 'Luciole',
+    shape: 'round',
     description: 'Légère et agile',
     speed: 26,
     acceleration: 15,
@@ -24,6 +30,7 @@ export const karts = [
   },
   {
     name: 'Météore',
+    shape: 'formula',
     description: 'Taillée pour la vitesse',
     speed: 33,
     acceleration: 10,
@@ -32,11 +39,48 @@ export const karts = [
   },
   {
     name: 'Étincelle',
+    shape: 'wedge',
     description: 'Un départ électrique',
     speed: 27,
     acceleration: 18,
     handling: 2.15,
     color: '#a195f6',
+  },
+  {
+    name: 'Baroudeur',
+    shape: 'buggy',
+    description: 'Un buggy qui tient le cap',
+    speed: 28,
+    acceleration: 13,
+    handling: 2.35,
+    color: '#ed9851',
+  },
+  {
+    name: 'Biscotte',
+    shape: 'retro',
+    description: 'Le charme rétro, la reprise en plus',
+    speed: 26,
+    acceleration: 17,
+    handling: 2.3,
+    color: '#6eb9e6',
+  },
+  {
+    name: 'Requin',
+    shape: 'rocket',
+    description: 'Un fuselage pour les lignes droites',
+    speed: 32,
+    acceleration: 12,
+    handling: 1.9,
+    color: '#5ccbc9',
+  },
+  {
+    name: 'Scarabée',
+    shape: 'beetle',
+    description: 'Tout en rondeurs et en souplesse',
+    speed: 27,
+    acceleration: 15,
+    handling: 2.5,
+    color: '#cf83c6',
   },
 ];
 export const trackDefinitions = [

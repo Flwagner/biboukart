@@ -1,4 +1,26 @@
 import { test, expect } from '@playwright/test';
+test('all eight characters and karts can be selected and restored', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#play').click();
+  await expect(page.getByLabel('Personnage joueur 1').locator('option')).toHaveCount(8);
+  await expect(page.getByLabel('Kart joueur 1').locator('option')).toHaveCount(8);
+  for (let index = 0; index < 8; index++) {
+    await page.getByLabel('Personnage joueur 1').selectOption(String(index));
+    await page.getByLabel('Kart joueur 1').selectOption(String(index));
+    await expect(page.locator('.kart-preview').first()).toBeVisible();
+  }
+  await page.locator('#next').click();
+  await page.locator('#start').click();
+  await expect(page.locator('#hud-0')).toContainText('🐷');
+  await page.reload();
+  await page.locator('#play').click();
+  await expect(page.getByLabel('Personnage joueur 1')).toHaveValue('7');
+  await expect(page.getByLabel('Kart joueur 1')).toHaveValue('7');
+  await page.locator('#next').click();
+  await page.locator('#start').click();
+  await expect(page.locator('#hud-0')).toContainText('🐷');
+});
+
 test('Couscous the black rabbit and Raclette the white cat appear in garage, race and podium', async ({
   page,
 }) => {

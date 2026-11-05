@@ -1,4 +1,4 @@
-import type { PlayerConfig } from './config';
+import { characters, karts, type PlayerConfig } from './config';
 export interface Selection {
   count: number;
   track: number;
@@ -25,10 +25,10 @@ export function loadSelection(): Selection | null {
           p &&
           Number.isInteger(p.character) &&
           p.character >= 0 &&
-          p.character < 4 &&
+          p.character < characters.length &&
           Number.isInteger(p.kart) &&
           p.kart >= 0 &&
-          p.kart < 4,
+          p.kart < karts.length,
       )
     )
       return null;

@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { karts, difficulties, type Difficulty, type Item, type PlayerConfig } from './config';
+import {
+  characters,
+  karts,
+  difficulties,
+  type Difficulty,
+  type Item,
+  type PlayerConfig,
+} from './config';
 import { Track, type Route, type Obstacle } from './track';
 export { Track } from './track';
 import { updateFlight } from './flight';
@@ -87,7 +94,11 @@ export class Race {
       this.racers.push({
         id: i,
         human: i < players.length,
-        config: players[i] ?? { character: i % 4, kart: i % 4, device: 'bot' },
+        config: players[i] ?? {
+          character: (i + this.track.index * 2) % characters.length,
+          kart: (i + this.track.index * 2) % karts.length,
+          device: 'bot',
+        },
         pos: p,
         previous: p.clone(),
         heading: Math.atan2(tangent.x, tangent.z),

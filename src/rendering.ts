@@ -81,7 +81,74 @@ export function makeKart(character: number, kart: number, id: number) {
   const rearLights = new THREE.Group(),
     rearLightMaterial = new THREE.MeshBasicMaterial({ color: '#842833' });
   const wheels: KartRig['wheels'] = [];
-  block(group, spec.color, [1.65, 0.55, 2.6], [0, 0.65, 0]);
+  const body = new THREE.Group();
+  body.name = `body-${spec.shape}`;
+  const rounded = (size: number[], position: number[], color = spec.color) => {
+    const part = mesh(sphere, color, ...(position as [number, number, number]));
+    part.scale.set(...(size as [number, number, number]));
+    body.add(part);
+  };
+  switch (spec.shape) {
+    case 'round':
+      rounded([0.84, 0.42, 1.35], [0, 0.62, 0]);
+      block(body, '#fff1c4', [0.18, 0.05, 1.1], [0, 0.98, 0.65]);
+      break;
+    case 'formula':
+      block(body, spec.color, [0.85, 0.38, 2.7], [0, 0.59, 0]);
+      block(body, spec.color, [2.15, 0.12, 0.45], [0, 0.4, 1.22]);
+      for (const side of [-1, 1]) {
+        block(body, spec.color, [0.35, 0.38, 1.1], [side * 0.68, 0.62, -0.3]);
+        block(body, '#273442', [0.09, 0.55, 0.1], [side * 0.65, 0.95, -1.12]);
+      }
+      block(body, spec.color, [2.1, 0.12, 0.5], [0, 1.25, -1.15]);
+      break;
+    case 'wedge': {
+      block(body, '#273442', [1.65, 0.25, 2.55], [0, 0.45, 0]);
+      const hood = block(body, spec.color, [1.55, 0.32, 1.3], [0, 0.7, 0.55]);
+      hood.rotation.x = 0.2;
+      for (const side of [-1, 1]) block(body, '#b7f9ef', [0.08, 0.1, 1.8], [side * 0.8, 0.6, 0]);
+      break;
+    }
+    case 'buggy':
+      block(body, spec.color, [1.7, 0.55, 2.15], [0, 0.8, -0.1]);
+      for (const side of [-1, 1]) {
+        block(body, '#273442', [0.12, 1.3, 0.12], [side * 0.7, 1.5, -0.65]);
+        for (const z of [-0.9, 0.9])
+          block(body, spec.color, [0.6, 0.15, 0.85], [side * 1.02, 1.08, z]);
+      }
+      block(body, '#273442', [1.5, 0.12, 0.12], [0, 2.15, -0.65]);
+      break;
+    case 'retro':
+      block(body, spec.color, [1.45, 0.65, 2.35], [0, 0.72, 0]);
+      block(body, spec.color, [1.15, 0.35, 0.9], [0, 1.04, 0.65]);
+      block(body, '#d5e3df', [0.65, 0.36, 0.06], [0, 0.86, 1.25]);
+      for (const x of [-0.2, 0, 0.2]) block(body, '#273442', [0.06, 0.28, 0.07], [x, 0.86, 1.29]);
+      for (const side of [-1, 1])
+        block(body, spec.color, [0.5, 0.18, 2.35], [side * 0.91, 0.87, 0]);
+      break;
+    case 'rocket': {
+      rounded([0.65, 0.45, 1.65], [0, 0.65, 0]);
+      for (const side of [-1, 1]) {
+        rounded([0.3, 0.3, 0.9], [side * 0.8, 0.6, -0.6], '#273442');
+        rounded([0.2, 0.2, 0.08], [side * 0.8, 0.6, -1.44], '#f6bd42');
+      }
+      const fin = mesh(new THREE.ConeGeometry(0.45, 0.85, 3), spec.color, 0, 1.18, -1);
+      fin.scale.x = 0.15;
+      body.add(fin);
+      break;
+    }
+    case 'beetle':
+      rounded([1, 0.55, 1.35], [0, 0.7, 0]);
+      rounded([0.85, 0.55, 0.6], [0, 0.98, -0.73]);
+      block(body, '#fff1c4', [0.09, 0.06, 1], [0, 1.18, 0.5]);
+      for (const side of [-1, 1])
+        for (const z of [-0.7, 0.7]) rounded([0.15, 0.09, 0.2], [side * 0.76, 1, z], '#273442');
+      break;
+    default:
+      block(body, spec.color, [1.65, 0.55, 2.6], [0, 0.65, 0]);
+  }
+  batchStatic(body);
+  group.add(body);
   block(group, '#233044', [1.1, 0.4, 0.85], [0, 0.95, -0.45]);
   block(group, spec.color, [1.9, 0.18, 0.3], [0, 0.7, -1.3]);
   block(group, '#273442', [1.65, 0.28, 0.12], [0, 0.67, 1.35]);
@@ -98,13 +165,16 @@ export function makeKart(character: number, kart: number, id: number) {
     rear.scale.set(0.32, 0.16, 0.05);
     rearLights.add(rear);
   }
-  for (const x of [-0.94, 0.94])
+  const axle = spec.shape === 'buggy' ? 1.1 : spec.shape === 'formula' ? 1.04 : 0.94;
+  const wheelScale = spec.shape === 'buggy' ? 1.25 : spec.shape === 'round' ? 0.85 : 1;
+  for (const x of [-axle, axle])
     for (const z of [-0.85, 0.85]) {
       const w = mesh(wheel, '#263247');
       w.rotation.z = Math.PI / 2;
+      w.scale.setScalar(wheelScale);
       block(w, '#a6b6c1', [0.6, 0.025, 0.1], [0, x < 0 ? 0.19 : -0.19, 0]);
       const pivot = new THREE.Group();
-      pivot.position.set(x, 0.43, z);
+      pivot.position.set(x, 0.43 * wheelScale, z);
       pivot.add(w);
       wheels.push({ pivot, wheel: w, front: z > 0 });
     }
@@ -129,8 +199,8 @@ export function makeKart(character: number, kart: number, id: number) {
     }
   }
   {
-    for (const x of [-0.4, 0.4]) {
-      const pointed = character === 0 || character === 3;
+    for (const x of character === 4 || character === 6 ? [] : [-0.4, 0.4]) {
+      const pointed = character === 0 || character === 3 || character === 7;
       const ear = mesh(
         pointed ? new THREE.ConeGeometry(0.23, character === 3 ? 0.45 : 0.6, 4) : sphere,
         character === 2 ? '#263247' : c.color,
@@ -139,6 +209,13 @@ export function makeKart(character: number, kart: number, id: number) {
         0,
       );
       if (!pointed) ear.scale.set(0.2, character === 1 ? 0.65 : 0.2, 0.2);
+      if (character === 5) {
+        ear.position.set(x * 1.5, 2.14, 0);
+        ear.scale.set(0.33, 0.35, 0.2);
+        const inside = mesh(sphere, '#e3cad0', x * 1.5, 2.14, 0.14);
+        inside.scale.set(0.22, 0.24, 0.09);
+        driver.add(inside);
+      }
       driver.add(ear);
       if (character === 1) {
         const inside = mesh(sphere, '#b18f9d', x, 2.47, 0.15);
@@ -151,6 +228,50 @@ export function makeKart(character: number, kart: number, id: number) {
         driver.add(inside);
       }
     }
+  }
+  if (character === 4) {
+    const face = mesh(sphere, '#f7f7f1', 0, 1.78, 0.38);
+    face.scale.set(0.48, 0.48, 0.22);
+    driver.add(face);
+    for (const side of [-1, 1]) {
+      const eye = mesh(sphere, '#152337', side * 0.22, 1.94, 0.59);
+      eye.scale.set(0.07, 0.09, 0.04);
+      driver.add(eye);
+      const flipper = mesh(sphere, c.color, side * 0.48, 1.24, 0.1);
+      flipper.scale.set(0.16, 0.38, 0.2);
+      flipper.rotation.z = side * 0.4;
+      driver.add(flipper);
+    }
+    const beak = mesh(new THREE.ConeGeometry(0.17, 0.35, 4), '#f6bd42', 0, 1.7, 0.72);
+    beak.rotation.x = Math.PI / 2;
+    driver.add(beak);
+  } else if (character === 5) {
+    const nose = mesh(sphere, '#273442', 0, 1.77, 0.57);
+    nose.scale.set(0.19, 0.26, 0.15);
+    driver.add(nose);
+  } else if (character === 6) {
+    for (const side of [-1, 1]) {
+      const socket = mesh(sphere, c.color, side * 0.37, 2.28, 0.24);
+      socket.scale.setScalar(0.27);
+      driver.add(socket);
+      const eye = mesh(sphere, '#fff1c4', side * 0.37, 2.3, 0.46);
+      eye.scale.set(0.17, 0.18, 0.09);
+      driver.add(eye);
+      const pupil = mesh(sphere, '#152337', side * 0.37, 2.3, 0.54);
+      pupil.scale.set(0.07, 0.11, 0.035);
+      driver.add(pupil);
+    }
+    block(driver, '#416d44', [0.5, 0.035, 0.04], [0, 1.65, 0.53]);
+  } else if (character === 7) {
+    const snout = mesh(sphere, '#e28eaa', 0, 1.7, 0.55);
+    snout.scale.set(0.3, 0.21, 0.16);
+    driver.add(snout);
+    for (const side of [-1, 1]) {
+      const nostril = mesh(sphere, '#904c68', side * 0.11, 1.7, 0.69);
+      nostril.scale.set(0.045, 0.065, 0.025);
+      driver.add(nostril);
+    }
+    driver.add(mesh(new THREE.TorusGeometry(0.17, 0.06, 5, 10), c.color, 0.4, 1.25, -0.5));
   }
   if (character === 3) {
     const nose = mesh(sphere, '#d994a4', 0, 1.67, 0.56);

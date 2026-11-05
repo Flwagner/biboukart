@@ -493,27 +493,11 @@ footer {
   z-index: 1;
   line-height: 1.2;
 }
-.mini-kart {
-  height: 17px;
-  border-radius: 6px;
-  margin-top: -4px;
-  position: relative;
-  box-shadow: 0 10px 0 -3px #253b4b;
-}
-.mini-kart:before,
-.mini-kart:after {
-  content: '';
-  position: absolute;
-  width: 12px;
-  height: 19px;
-  background: #253b4b;
-  border-radius: 4px;
-  top: 6px;
-  left: -8px;
-}
-.mini-kart:after {
-  left: auto;
-  right: -8px;
+.kart-preview {
+  width: 100px;
+  height: 58px;
+  margin: -20px auto 0;
+  z-index: 2;
 }
 label {
   display: block;

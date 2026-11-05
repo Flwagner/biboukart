@@ -16,7 +16,7 @@ describe('Couscous and Raclette', () => {
     });
     expect(characters[1].icon).toContain('<svg');
     expect(characters[3].icon).toContain('Raclette, chat blanc');
-    expect(characters).toHaveLength(4);
+    expect(characters).toHaveLength(8);
   });
   it.each([1, 3])('builds a driver in the selected coat colour for index %i', (index) => {
     const driver = makeKart(index, 0, 0).userData.rig.driver as THREE.Group;
