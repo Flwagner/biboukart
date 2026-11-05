@@ -43,6 +43,18 @@ Ces mesures sont celles du **GPU logiciel dans cet environnement de développeme
 - Jeu à quatre prolongé sur PC, chauffe et stabilité à deux sur mobile.
 - Mesure de fps avec GPU matériel et appareils de référence identifiés. Les performances du rendu logiciel automatisé ne sont pas représentatives de celles d'un téléphone ou PC joueur.
 
+## Régression CI : synchronisation du rendu et des manettes
+
+Les délais fixes de 100 ms (mesure GPU) et 120 ms (relâchement de Start) pouvaient expirer avant une image en CI. Ils sont remplacés par l'attente d'un rendu effectivement terminé, avec mémoire GPU non nulle, et par l'attente du relâchement effectivement échantillonné par le gestionnaire d'entrées. La simulation reste figée pendant la comparaison des ressources pour comparer des scènes identiques.
+
+Validation du correctif : les 6 scénarios complets passent, puis les deux scénarios concernés passent chacun trois fois avec un délai artificiel de 250 ms entre les images, sans retries :
+
+```sh
+E2E_FRAME_DELAY_MS=250 npx playwright test --grep 'four split-screen|gamepad throttle' --repeat-each=3 --output=test-results/slow-frames
+```
+
+Les traces et captures sont désormais publiées comme artefacts GitHub Actions en cas d'échec. L'état d'échantillonnage des boutons exposé aux tests reste limité au développement et absent du build de production.
+
 ## Publication
 
 Build et workflow prêts ; publication GitHub Pages non effectuée depuis cette session. Activer Pages avec GitHub Actions et pousser le projet selon le README. Aucun résultat de déploiement distant n'est revendiqué.

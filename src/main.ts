@@ -529,6 +529,7 @@ if (import.meta.env.DEV) {
           playerCount,
           elapsed: race?.elapsed,
           uptime: performance.now() - startTime,
+          pauseButtons: Object.fromEntries(inputs.pauseButtons),
         };
       },
     },

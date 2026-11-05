@@ -8,6 +8,19 @@ async function ready(page: Page) {
   await page.goto('/');
   await expect(page.locator('#play')).toBeVisible();
 }
+// Optional regression stress: emulate a renderer slower than the old fixed sleeps.
+test.beforeEach(async ({ page }) => {
+  const delay = Number(process.env.E2E_FRAME_DELAY_MS ?? 0);
+  if (Number.isFinite(delay) && delay > 0) {
+    await page.addInitScript((delay) => {
+      const requestFrame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        requestFrame(() => {
+          window.setTimeout(() => callback(performance.now()), delay);
+        });
+    }, delay);
+  }
+});
 test('full menu → selection → keyboard driving → pause → results → rematch', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -60,8 +73,17 @@ test('four split-screen views, independent controls and stable resource counts',
   await page.screenshot({ path: 'test-results/four-players.png' });
   const geometries: number[] = [];
   for (let i = 0; i < 6; i++) {
-    await page.evaluate((i) => window.__bibou.start(4, i % 3), i);
-    await page.waitForTimeout(100);
+    const previousFrame = await page.evaluate((i) => {
+      const frame = window.__bibou.renderer.renderer.info.render.frame;
+      window.__bibou.start(4, i % 3);
+      // Keep the same scene throughout measurement, independent of CI frame rate.
+      window.__bibou.race.countdown = Infinity;
+      return frame;
+    }, i);
+    await page.waitForFunction((previousFrame) => {
+      const info = window.__bibou.renderer.renderer.info;
+      return info.render.frame > previousFrame && info.memory.geometries > 0;
+    }, previousFrame);
     geometries.push(
       await page.evaluate(() => window.__bibou.renderer.renderer.info.memory.geometries),
     );
@@ -144,7 +166,8 @@ test('gamepad throttle, Start pause/resume and disconnect recovery', async ({ pa
   await page.evaluate(() => {
     (window as any).__testpad.buttons[9].pressed = false;
   });
-  await page.waitForTimeout(120);
+  // Wait for the actual input poll, not a wall-clock delay between two presses.
+  await expect.poll(() => page.evaluate(() => window.__bibou.state.pauseButtons[0])).toBe(false);
   await page.evaluate(() => {
     (window as any).__testpad.buttons[9].pressed = true;
   });
