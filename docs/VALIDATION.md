@@ -1,5 +1,7 @@
 # Validation de BibouKart
 
+> Historique de validation de la version `ef7cca3` et des correctifs précédents. Les résultats actuels des trois lots suivants (**79 tests unitaires, 20 scénarios navigateur**) et les nouvelles mesures de rendu sont dans [`EVOLUTIONS.md`](EVOLUTIONS.md).
+
 ## Environnement et portée
 
 Validation effectuée le 5 novembre 2026, sous Linux, Node.js 22.23.0 et npm 10.9.8. Navigateurs de test : Chromium automatisé par Playwright ; WebGL logiciel SwiftShader pour les tests reproductibles. Inspection du rendu et de la navigation également via le MCP Playwright.
@@ -72,4 +74,4 @@ Les volumes général, musique et effets sont indépendants et sauvegardés. Les
 
 ## Publication
 
-Build et workflow prêts ; publication GitHub Pages non effectuée depuis cette session. Activer Pages avec GitHub Actions et pousser le projet selon le README. Aucun résultat de déploiement distant n'est revendiqué.
+Le workflow publie sur GitHub Pages après un push validé sur la branche principale. Consulter GitHub Actions pour connaître l'état effectif du déploiement ; les tests locaux et un push réussi ne certifient pas l'achèvement de cette étape distante.

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { karts, type Item, type PlayerConfig } from './config';
+import { karts, difficulties, type Difficulty, type Item, type PlayerConfig } from './config';
 import { Track, type Route, type Obstacle } from './track';
 export { Track } from './track';
 export interface Input {
@@ -64,7 +64,11 @@ export class Race {
   finishDeadline = Infinity;
   seed = 12345;
   onEvent: (kind: string, racer: number, item?: Item) => void = () => {};
-  constructor(track: number, players: PlayerConfig[]) {
+  constructor(
+    track: number,
+    players: PlayerConfig[],
+    public difficulty: Difficulty = 'normal',
+  ) {
     this.track = new Track(track);
     this.obstacles = [this.track.createObstacle()];
     for (let i = 0; i < 6; i++) {
@@ -133,18 +137,31 @@ export class Race {
         : ['turbo', 'missile', 'turbo', 'shield', 'trap'];
     return pool[Math.floor(this.random() * pool.length)];
   }
-  ai(r: Racer, preferShortcut = r.id % 3 === 0): Input {
+  ai(
+    r: Racer,
+    preferShortcut = this.difficulty === 'hard' || (this.difficulty === 'normal' && r.id % 3 === 0),
+  ): Input {
+    const profile = difficulties[this.difficulty],
+      spec = karts[r.config.kart];
     const n = this.track.surface(r.pos, r.route),
       lookAhead =
-        n.route === 'shortcut' ? 7 + Math.abs(r.speed) * 0.35 : 8 + Math.abs(r.speed) * 0.5,
+        n.route === 'shortcut'
+          ? 7 + Math.abs(r.speed) * 0.35
+          : profile.lookAhead + Math.abs(r.speed) * profile.speedLook,
       target = this.track.target(n, lookAhead, preferShortcut);
     for (const obstacle of this.obstacles) {
       const ahead = ((obstacle.t - n.t + 1) % 1) * this.track.length;
-      if (n.route === 'main' && ahead < 21) {
+      if (n.route === 'main' && ahead < profile.obstacleLook) {
         const tangent = this.track.tangent(n.t);
+        const offset =
+          this.difficulty === 'hard'
+            ? Math.sin((this.elapsed + ahead / Math.max(8, r.speed)) * 0.8 + this.track.index) *
+              this.track.width *
+              0.34
+            : obstacle.offset;
         target.addScaledVector(
           new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
-          (obstacle.offset >= 0 ? -1 : 1) * 4.3,
+          (offset >= 0 ? -1 : 1) * 4.3,
         );
       }
     }
@@ -152,7 +169,8 @@ export class Race {
     // Pure pursuit: requested yaw follows curvature, using the kart's real steering limits.
     let steer =
       Math.abs(r.speed) > 5
-        ? (2 * Math.abs(r.speed) * Math.sin(angle)) / (lookAhead * karts[r.config.kart].handling)
+        ? (2 * Math.abs(r.speed) * Math.sin(angle) * profile.precision) /
+          (lookAhead * spec.handling)
         : angle * 1.5;
     for (const other of this.racers)
       if (other !== r) {
@@ -163,12 +181,21 @@ export class Race {
             Math.sign(delta.dot(new THREE.Vector3(Math.cos(r.heading), 0, -Math.sin(r.heading)))) *
             -0.35;
       }
+    const desiredSpeed =
+      spec.speed *
+      profile.speed *
+      (r.boost > 0 ? 1.5 : 1) *
+      (r.slow > 0 ? 0.5 : 1) *
+      (Math.abs(angle) > 0.6 ? profile.cornerSpeed : 1);
     return {
-      throttle: 1,
-      brake: Math.abs(angle) > 0.65 && r.speed > 16 ? 0.65 : 0,
+      throttle: r.speed < desiredSpeed ? 1 : 0,
+      brake:
+        r.speed > desiredSpeed + 0.7
+          ? THREE.MathUtils.clamp((r.speed - desiredSpeed) / 8, 0, 1)
+          : 0,
       // Convert signed world-heading correction to the same steering convention as humans.
       steer: -THREE.MathUtils.clamp(steer, -1, 1),
-      use: !!r.item && this.random() < 0.018,
+      use: !!r.item && this.random() < profile.itemChance,
     };
   }
   hit(r: Racer) {

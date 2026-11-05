@@ -15,6 +15,7 @@ import { Inputs } from './input';
 import { Audio } from './audio';
 import { loadSelection, saveSelection } from './storage';
 import { mapProjection, minimapMarkup } from './minimap';
+import { difficulties, type Difficulty } from './config';
 
 const app = document.querySelector<HTMLElement>('#app')!,
   hud = document.querySelector<HTMLElement>('#hud')!;
@@ -178,6 +179,19 @@ function tracks() {
   );
   $('#back').onclick = setup;
   $('#start').onclick = () => start();
+  const difficulty = document.createElement('label');
+  difficulty.className = 'difficulty-setting';
+  difficulty.innerHTML = `Difficulté des bots<select id="difficulty">${Object.entries(difficulties)
+    .map(
+      ([value, d]) =>
+        `<option value="${value}" ${settings.difficulty === value ? 'selected' : ''}>${d.label} — ${d.description}</option>`,
+    )
+    .join('')}</select>`;
+  $('.tracks .panel-actions').before(difficulty);
+  $('#difficulty').onchange = (event) => {
+    settings.difficulty = (event.target as HTMLSelectElement).value as Difficulty;
+    saveSettings(settings);
+  };
   $('.tracks').insertAdjacentHTML(
     'beforeend',
     '<p class="notice">⚠ Les panneaux jaunes annoncent les obstacles mobiles. Les passages étroits bordés de jaune sont des raccourcis : un turbo y récompense une trajectoire précise, mais leurs bas-côtés ralentissent fortement.</p>',
@@ -263,7 +277,7 @@ function start() {
   saveSelection({ count: playerCount, track: selectedTrack, players });
   void audio.unlock();
   screen = 'race';
-  race = new Race(selectedTrack, players.slice(0, playerCount));
+  race = new Race(selectedTrack, players.slice(0, playerCount), settings.difficulty);
   inputs.players = players.slice(0, playerCount);
   inputs.clear();
   pendingUse = [];
@@ -473,6 +487,10 @@ function results() {
   $('#home').onclick = home;
   $('#circuits').onclick = tracks;
   $('#again').onclick = start;
+  $('.leaderboard').insertAdjacentHTML(
+    'beforebegin',
+    `<p class="difficulty-result">Bots : ${difficulties[race.difficulty].label}</p>`,
+  );
   renderer.showPodium(race);
   const resultPanel = $('.results'),
     details = document.createElement('div');

@@ -36,6 +36,17 @@
   stroke-dasharray: 5 4;
   stroke-linecap: round;
 }
+.difficulty-setting {
+  max-width: 560px;
+  font-size: 12px;
+  margin: 20px 0;
+}
+.difficulty-setting select {
+  font-size: 12px;
+}
+.difficulty-result {
+  font-size: 12px;
+}
 .minimap circle {
   stroke: #26394c;
   stroke-width: 2;

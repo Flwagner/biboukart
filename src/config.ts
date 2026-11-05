@@ -113,10 +113,47 @@ export interface Settings {
   volume: number;
   musicVolume: number;
   effectsVolume: number;
+  difficulty: Difficulty;
   quality: string;
   reduced: boolean;
   bindings: string[][];
 }
+export const difficulties = {
+  easy: {
+    label: 'Facile',
+    description: 'Prudents, vitesse modérée, objets occasionnels',
+    speed: 0.7,
+    precision: 0.92,
+    lookAhead: 9,
+    speedLook: 0.5,
+    itemChance: 0.006,
+    cornerSpeed: 0.58,
+    obstacleLook: 25,
+  },
+  normal: {
+    label: 'Normal',
+    description: 'Équilibrés, quelques raccourcis, objets réguliers',
+    speed: 0.89,
+    precision: 1,
+    lookAhead: 8,
+    speedLook: 0.5,
+    itemChance: 0.018,
+    cornerSpeed: 0.72,
+    obstacleLook: 23,
+  },
+  hard: {
+    label: 'Difficile',
+    description: 'Trajectoires précises, raccourcis et anticipation',
+    speed: 1,
+    precision: 1.05,
+    lookAhead: 7,
+    speedLook: 0.42,
+    itemChance: 0.03,
+    cornerSpeed: 0.85,
+    obstacleLook: 28,
+  },
+} as const;
+export type Difficulty = keyof typeof difficulties;
 export const defaultBindings = [
   ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space'],
   ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'],
@@ -132,6 +169,7 @@ export function loadSettings(): Settings {
         typeof s.musicVolume === 'number' ? Math.max(0, Math.min(1, s.musicVolume)) : 0.55,
       effectsVolume:
         typeof s.effectsVolume === 'number' ? Math.max(0, Math.min(1, s.effectsVolume)) : 0.8,
+      difficulty: ['easy', 'normal', 'hard'].includes(s.difficulty) ? s.difficulty : 'normal',
       quality: ['auto', 'low', 'medium', 'high'].includes(s.quality) ? s.quality : 'auto',
       reduced: !!s.reduced,
       bindings:
@@ -151,6 +189,7 @@ export function loadSettings(): Settings {
       volume: 0.3,
       musicVolume: 0.55,
       effectsVolume: 0.8,
+      difficulty: 'normal',
       quality: 'auto',
       reduced: false,
       bindings: defaultBindings.map((b) => [...b]),

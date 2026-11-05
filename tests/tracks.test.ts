@@ -3,6 +3,34 @@ import { Track } from '../src/track';
 import { Race, idleInput } from '../src/race';
 const player = { character: 0, kart: 0, device: 'keyboard' };
 describe('relief, shortcuts and mobile obstacles', () => {
+  it('rejects a jump from shortcut entry to exit and cannot earn a checkpoint by reversing', () => {
+    const race = new Race(1, [player]),
+      r = race.racers[0],
+      s = race.track.shortcut;
+    race.countdown = 0;
+    r.progress = s.start;
+    r.lastT = s.start;
+    r.checkpoint = Math.floor(s.start * 8);
+    r.route = 'shortcut';
+    r.pos.copy(race.track.routeAt('shortcut', 1));
+    race.update(1 / 60, [idleInput()]);
+    expect(r.progress).toBeCloseTo(s.start, 2);
+    expect(r.lap).toBe(0);
+    expect(r.checkpoint).toBe(Math.floor(s.start * 8));
+    r.progress = s.start + (s.end - s.start) * 0.5;
+    r.lastT = r.progress;
+    r.pos.copy(race.track.routeAt('shortcut', 0.5));
+    r.route = 'shortcut';
+    r.checkpoint = Math.floor(r.progress * 8);
+    const checkpoint = r.checkpoint,
+      progress = r.progress,
+      tangent = race.track.routeTangent('shortcut', 0.5);
+    r.heading = Math.atan2(tangent.x, tangent.z);
+    r.speed = -5;
+    for (let i = 0; i < 20; i++) race.update(1 / 60, [idleInput()]);
+    expect(r.progress).toBeLessThan(progress);
+    expect(r.checkpoint).toBe(checkpoint);
+  });
   it.each([0, 1, 2])(
     'track %i has continuous relief, narrower shorter alternative and valid joins',
     (index) => {

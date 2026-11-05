@@ -53,13 +53,16 @@ try {
   );
   await page.locator('#play').click();
   await page.locator('#next').click();
+  await page.locator('#difficulty').selectOption('hard');
   await page.locator('#start').click();
   await page.locator('.player-hud').waitFor();
+  await page.locator('.minimap').waitFor();
+  assert.equal(await page.locator('[data-map-racer]').count(), 6);
   assert.deepEqual(errors, []);
   assert.deepEqual(failed, []);
   assert(requests.every((url) => url.startsWith(origin) || url.startsWith('data:')));
   console.log(
-    'PASS production under /biboukart/: menus, WebGL race, relative assets, zero HTTP/page errors, no external requests, no debug hooks.',
+    'PASS production under /biboukart/: difficulty selector, minimap with six racers, WebGL race, relative assets, zero HTTP/page errors, no external requests, no debug hooks.',
   );
 } finally {
   await browser?.close();

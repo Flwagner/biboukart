@@ -3,6 +3,14 @@ import { loadSettings, saveSettings, defaultBindings } from '../src/config';
 import { loadSelection, saveSelection } from '../src/storage';
 afterEach(() => vi.unstubAllGlobals());
 describe('resilient local settings', () => {
+  it('validates saved bot difficulty and migrates older preferences to normal', () => {
+    for (const difficulty of ['easy', 'normal', 'hard']) {
+      vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ difficulty }) });
+      expect(loadSettings().difficulty).toBe(difficulty);
+    }
+    vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ difficulty: 'impossible' }) });
+    expect(loadSettings().difficulty).toBe('normal');
+  });
   it('migrates existing settings with independent music and effects levels', () => {
     vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ volume: 0.2 }) });
     expect(loadSettings()).toMatchObject({ volume: 0.2, musicVolume: 0.55, effectsVolume: 0.8 });

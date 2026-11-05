@@ -8,6 +8,9 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
 - 4 personnages, 4 karts aux caractéristiques différentes, 3 circuits.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
+- Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant animés, réactions des pilotes et podium 3D.
+- Moulins, arches rocheuses et palmiers ; routes vallonnées sans sauts, obstacles mobiles annoncés et raccourcis étroits récompensés par un turbo.
+- Bots faciles, normaux ou difficiles, au choix avant la course. Le réglage est sauvegardé et conservé pour la revanche.
 - Boîtes cadeaux : missile guidé, turbo, bouclier, piège. Bandes de turbo sur la route.
 - Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Variante discrète avec les animations réduites.
 - Musique originale en boucle (8 mesures, 116 BPM), basse, mélodie et percussions ; sons distincts de cadeaux, pouvoirs, collisions, départ et arrivée. Volumes général/musique/effets indépendants.
@@ -65,26 +68,31 @@ Le workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) valide 
 3. Pousser sur la branche principale ou déclencher le workflow manuellement.
 4. Consulter l'URL dans l'environnement `github-pages`. Pour le dépôt actuel : `https://flwagner.github.io/biboukart/` une fois le déploiement réussi.
 
-La base Vite est relative (`./`) : aucune route serveur, aucun service externe et aucun chemin absolu d'asset ne sont nécessaires. Le site fonctionne aussi sur un autre hébergement statique. **Aucune publication distante n'a été effectuée par cette implémentation.**
+La base Vite est relative (`./`) : aucune route serveur, aucun service externe et aucun chemin absolu d'asset ne sont nécessaires. Le site fonctionne aussi sur un autre hébergement statique. L'état de la publication distante est visible dans GitHub Actions ; un push réussi ne constitue pas à lui seul la preuve d'un déploiement terminé.
 
 ## Architecture
 
-| Fichier                                           | Responsabilité                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `src/config.ts`                                   | Personnages, karts, pistes, objets et paramètres validés                        |
-| `src/race.ts`                                     | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets            |
-| `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor          |
-| `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU |
-| `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                          |
-| `src/main.ts`                                     | Écrans, HUD, orchestration de la partie et boucle principale                    |
-| `src/audio.ts`                                    | Mixage Web Audio, moteur, activation après interaction et pause                 |
-| `src/music.ts` / `src/synth.ts` / `src/sounds.ts` | Composition originale et synthèse des instruments et bruitages                  |
-| `src/storage.ts`                                  | Dernières sélections ; tolérance au stockage indisponible                       |
-| `src/style.css`                                   | Interface française adaptative et commandes tactiles                            |
+| Fichier                                           | Responsabilité                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/config.ts`                                   | Personnages, karts, pistes, objets et paramètres validés                          |
+| `src/race.ts`                                     | Simulation à 60 Hz, collisions, checkpoints, classements, IA, objets              |
+| `src/track.ts`                                    | Relief, projection des routes, raccourcis et mouvement déterministe des obstacles |
+| `src/scenery.ts`                                  | Décors propres à chaque univers et modèles des obstacles                          |
+| `src/minimap.ts` / `src/animation.ts`             | Carte du circuit et articulation des karts/pilotes                                |
+| `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor            |
+| `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU   |
+| `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                            |
+| `src/main.ts`                                     | Écrans, HUD, orchestration de la partie et boucle principale                      |
+| `src/audio.ts`                                    | Mixage Web Audio, moteur, activation après interaction et pause                   |
+| `src/music.ts` / `src/synth.ts` / `src/sounds.ts` | Composition originale et synthèse des instruments et bruitages                    |
+| `src/storage.ts`                                  | Dernières sélections ; tolérance au stockage indisponible                         |
+| `src/style.css`                                   | Interface française adaptative et commandes tactiles                              |
 
 Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de physique réaliste, drift, sauts ou routes superposées. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
 
-La graine d'attribution des objets est déterministe. Les bots utilisent la même vitesse, la même physique et les mêmes règles d'objets que les humains. Le solo reste une course, pas un mode contre-la-montre.
+La graine d'attribution des objets est déterministe. Les bots utilisent les mêmes limites physiques, collisions et règles d'objets que les humains. La difficulté change leur vitesse visée (70 %, 89 %, 100 % de la vitesse du kart), l'anticipation, la fréquence d'utilisation des objets et la prise des raccourcis, sans sur-vitesse cachée ou rattrapage artificiel. Le solo reste une course, pas un mode contre-la-montre.
+
+Les panneaux jaunes annoncent les obstacles mobiles : un contact ralentit brièvement et peut être bloqué par un bouclier. Les raccourcis figurent en pointillés jaunes sur la carte ; ils sont moins larges et leurs bas-côtés ralentissent fortement. Les checkpoints restent ordonnés, même en passant par une branche. Un kart repositionné revient sur sa route sans gagner de progression.
 
 Les réglages et sélections sont sauvegardés localement, sans données envoyées à un serveur. Les contrôleurs sont réattribués par session car leur indice matériel n'est pas une identité stable. Le jeu continue si le stockage est bloqué.
 
@@ -100,7 +108,7 @@ Les réglages et sélections sont sauvegardés localement, sans données envoyé
 
 ## Vérifications de livraison
 
-Les commandes ci-dessus sont reproductibles. Voir [`docs/VALIDATION.md`](docs/VALIDATION.md) pour les résultats observés et leurs limites.
+Les commandes ci-dessus sont reproductibles. Voir [`docs/EVOLUTIONS.md`](docs/EVOLUTIONS.md) pour les validations des trois derniers lots, et [`docs/VALIDATION.md`](docs/VALIDATION.md) pour l'historique et les limites matérielles.
 
 Les interfaces de test `window.__bibou` existent **uniquement en développement**. Elles sont supprimées du build de production, ce que le test statique vérifie.
 

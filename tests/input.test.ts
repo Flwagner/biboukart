@@ -5,6 +5,7 @@ const settings = () => ({
   volume: 0.3,
   musicVolume: 0.55,
   effectsVolume: 0.8,
+  difficulty: 'normal' as const,
   quality: 'auto',
   reduced: false,
   bindings: defaultBindings.map((b) => [...b]),
