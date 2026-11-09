@@ -339,6 +339,12 @@ test.describe('mobile landscape', () => {
     await page.dispatchEvent('body', 'pointerup', { pointerId: 11 });
     await page.dispatchEvent('body', 'pointerup', { pointerId: 12 });
     await page.screenshot({ path: 'test-results/mobile-two-players.png' });
+    // Chromium cannot resize a fullscreen window to emulate device rotation.
+    // Fullscreen itself is covered separately in fullscreen.spec.ts.
+    await page.evaluate(async () => {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    });
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('.orientation')).toBeVisible();
     await page.setViewportSize({ width: 844, height: 390 });
