@@ -1,4 +1,19 @@
 import { test, expect } from '@playwright/test';
+test('preview dropdowns keep their arrows beside the selected portrait', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#play').click();
+  await page.locator('[data-count="4"]').click();
+  for (const select of await page.locator('.preview-select').all()) {
+    await expect(select).toHaveCSS('display', 'flex');
+    await expect(select.locator('selectedcontent .option-preview')).toBeVisible();
+    expect((await select.boundingBox())!.height).toBeLessThanOrEqual(60);
+  }
+  await page.getByLabel('Kart joueur 1').click();
+  await expect(page.getByRole('option', { name: 'Luciole', exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'Luciole', exact: true }).click();
+  await expect(page.getByLabel('Kart joueur 1')).toHaveValue('1');
+});
+
 test('all eight characters and karts can be selected and restored', async ({ page }) => {
   await page.goto('/');
   await page.locator('#play').click();

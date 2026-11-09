@@ -520,6 +520,86 @@ select {
   font-size: 13px;
   letter-spacing: 0;
 }
+/* Native rich selects preserve keyboard, touch and gamepad selection behaviour. */
+.preview-select,
+.preview-select::picker(select) {
+  appearance: base-select;
+}
+.preview-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 7px 8px;
+}
+.preview-select > button {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.preview-select::picker-icon {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+.preview-select selectedcontent,
+.preview-select option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.preview-select::picker(select) {
+  border: 1px solid #dce0d5;
+  border-radius: 10px;
+  background: #fffdf5;
+  color: #2f4351;
+  padding: 5px;
+  max-height: min(360px, 60dvh);
+  overflow-y: auto;
+  box-shadow: 0 10px 30px #172d4326;
+}
+.preview-select option {
+  padding: 7px 8px;
+  min-height: 48px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.preview-select option:hover,
+.preview-select option:focus {
+  background: #edf0e3;
+}
+.preview-select option:checked {
+  background: #e3eedc;
+}
+.option-preview {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 34px;
+  font-size: 28px;
+  line-height: 1;
+}
+.option-preview .character-icon {
+  width: 32px;
+  height: 32px;
+}
+.option-preview .kart-preview {
+  width: 42px;
+  height: 30px;
+  margin: 0;
+}
+.option-name {
+  white-space: normal;
+}
 .stats {
   font-size: 10px;
   display: flex;

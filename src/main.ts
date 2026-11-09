@@ -1,5 +1,6 @@
 import './style.css';
 import { kartPortrait } from './portraits';
+import { enhancePreviewSelects, previewOption } from './previewSelect';
 import { trackPreviewPath } from './track';
 import {
   characters,
@@ -151,6 +152,7 @@ function setup() {
         $(`[data-count="${playerCount}"]`).focus();
       }),
   );
+  enhancePreviewSelects(app);
   app.querySelectorAll<HTMLSelectElement>('select[data-field]').forEach(
     (el) =>
       (el.onchange = () => {
@@ -179,7 +181,7 @@ function setup() {
 }
 function playerCard(p: PlayerConfig, i: number) {
   const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => !!p);
-  return `<article class="player-card player-${i}"><div class="player-label"><span>JOUEUR ${i + 1}</span><span>●</span></div><div class="character-preview" style="--character-color:${characters[p.character].color}"><span>${characters[p.character].icon}</span>${kartPortrait(karts[p.kart])}</div><label>VOTRE PILOTE<select data-player="${i}" data-field="character" aria-label="Personnage joueur ${i + 1}">${characters.map((c, j) => `<option value="${j}" ${p.character === j ? 'selected' : ''}>${c.name} · ${c.animal}</option>`).join('')}</select></label><label>VOTRE KART<select data-player="${i}" data-field="kart" aria-label="Kart joueur ${i + 1}">${karts.map((k, j) => `<option value="${j}" ${p.kart === j ? 'selected' : ''}>${k.name}</option>`).join('')}</select></label><div class="stats"><span>Vitesse <b>${'▰'.repeat(Math.round((karts[p.kart].speed - 20) / 3))}</b></span><span>Agilité <b>${'▰'.repeat(Math.round(karts[p.kart].handling * 2))}</b></span></div><label>COMMANDES<select data-player="${i}" data-field="device" aria-label="Contrôleur joueur ${i + 1}"><option value="keyboard" ${p.device === 'keyboard' ? 'selected' : ''}>Clavier · profil ${i + 1}</option><option value="touch" ${p.device === 'touch' ? 'selected' : ''}>Écran tactile</option>${pads.map((pad) => `<option value="pad:${pad.index}" ${p.device === `pad:${pad.index}` ? 'selected' : ''}>Manette ${pad.index + 1}</option>`).join('')}</select></label></article>`;
+  return `<article class="player-card player-${i}"><div class="player-label"><span>JOUEUR ${i + 1}</span><span>●</span></div><div class="character-preview" style="--character-color:${characters[p.character].color}"><span>${characters[p.character].icon}</span>${kartPortrait(karts[p.kart])}</div><label>VOTRE PILOTE<select data-player="${i}" data-field="character" aria-label="Personnage joueur ${i + 1}">${characters.map((c, j) => previewOption(j, p.character === j, `${c.name} · ${c.animal}`, c.icon)).join('')}</select></label><label>VOTRE KART<select data-player="${i}" data-field="kart" aria-label="Kart joueur ${i + 1}">${karts.map((k, j) => previewOption(j, p.kart === j, k.name, kartPortrait(k))).join('')}</select></label><div class="stats"><span>Vitesse <b>${'▰'.repeat(Math.round((karts[p.kart].speed - 20) / 3))}</b></span><span>Agilité <b>${'▰'.repeat(Math.round(karts[p.kart].handling * 2))}</b></span></div><label>COMMANDES<select data-player="${i}" data-field="device" aria-label="Contrôleur joueur ${i + 1}"><option value="keyboard" ${p.device === 'keyboard' ? 'selected' : ''}>Clavier · profil ${i + 1}</option><option value="touch" ${p.device === 'touch' ? 'selected' : ''}>Écran tactile</option>${pads.map((pad) => `<option value="pad:${pad.index}" ${p.device === `pad:${pad.index}` ? 'selected' : ''}>Manette ${pad.index + 1}</option>`).join('')}</select></label></article>`;
 }
 function tracks() {
   screen = 'tracks';
