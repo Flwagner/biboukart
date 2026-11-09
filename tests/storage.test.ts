@@ -81,7 +81,12 @@ describe('resilient local settings', () => {
     expect(loadSelection()).toEqual({
       count: 2,
       track: 1,
-      players: Array.from({ length: 4 }, (_, i) => ({ character: i, kart: i, device: 'keyboard' })),
+      players: Array.from({ length: 4 }, (_, i) => ({
+        character: i,
+        kart: i,
+        device: 'keyboard',
+        childMode: false,
+      })),
     });
   });
   it('rejects invalid selections and tolerates denied writes', () => {
@@ -93,6 +98,31 @@ describe('resilient local settings', () => {
     });
     expect(loadSelection()).toBeNull();
     expect(() => saveSelection({ count: 1, track: 0, players: [] })).not.toThrow();
+  });
+  it('persists child mode independently and only accepts boolean true', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    let stored = '';
+    vi.stubGlobal('localStorage', {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    });
+    saveSelection({
+      count: 2,
+      track: 0,
+      players: Array.from({ length: 4 }, (_, i) => ({
+        character: i,
+        kart: i,
+        device: 'keyboard',
+        childMode: i === 1,
+      })),
+    });
+    expect(loadSelection()?.players.map((p) => p.childMode)).toEqual([false, true, false, false]);
+    const corrupt = JSON.parse(stored);
+    corrupt.players[0].childMode = 'true';
+    stored = JSON.stringify(corrupt);
+    expect(loadSelection()?.players[0].childMode).toBe(false);
   });
   it('works with unavailable storage', () => {
     vi.stubGlobal('localStorage', {

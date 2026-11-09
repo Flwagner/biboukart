@@ -40,6 +40,7 @@ export function loadSelection(): Selection | null {
         character: p.character,
         kart: p.kart,
         device: matchMedia('(pointer: coarse)').matches ? 'touch' : 'keyboard',
+        childMode: p.childMode === true,
       })),
     };
   } catch {

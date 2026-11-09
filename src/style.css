@@ -783,6 +783,26 @@ select {
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
+.player-card .child-mode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.child-mode input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #a97640;
+}
+.child-mode small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
 #pad-remap-cancel[hidden] {
   display: none;
 }

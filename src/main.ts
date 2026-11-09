@@ -153,6 +153,18 @@ function setup() {
       }),
   );
   enhancePreviewSelects(app);
+  app.querySelectorAll<HTMLElement>('.player-card').forEach((card, i) => {
+    card.insertAdjacentHTML(
+      'beforeend',
+      `<label class="check child-mode"><input type="checkbox" data-child-player="${i}" aria-label="Mode enfant joueur ${i + 1}" ${players[i].childMode ? 'checked' : ''}><span>Mode enfant<small>Avance tout seul · reste sur la route</small></span></label>`,
+    );
+  });
+  app.querySelectorAll<HTMLInputElement>('input[data-child-player]').forEach((el) => {
+    el.onchange = () => {
+      players[Number(el.dataset.childPlayer)].childMode = el.checked;
+      saveSelection({ count: playerCount, track: selectedTrack, players });
+    };
+  });
   app.querySelectorAll<HTMLSelectElement>('select[data-field]').forEach(
     (el) =>
       (el.onchange = () => {

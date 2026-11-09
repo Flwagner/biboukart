@@ -213,6 +213,7 @@ export interface PlayerConfig {
   character: number;
   kart: number;
   device: string;
+  childMode?: boolean;
 }
 export interface Settings {
   volume: number;

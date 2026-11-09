@@ -60,6 +60,7 @@ export interface Racer {
   slow: number;
   itemCooldown: number;
   stuck: number;
+  assistedStuck: number;
   wrongWay: boolean;
 }
 export interface Pickup {
@@ -148,6 +149,7 @@ export class Race {
         slow: 0,
         itemCooldown: 0,
         stuck: 0,
+        assistedStuck: 0,
         wrongWay: false,
       });
     }
@@ -249,6 +251,26 @@ export class Race {
       steer: -THREE.MathUtils.clamp(steer, -1, 1),
       use: !!r.item && this.random() < profile.itemChance,
     };
+  }
+  keepChildOnRoad(r: Racer, dt: number): boolean {
+    if (!r.human || !r.config.childMode) return false;
+    const surface = this.track.surface(r.pos, r.route);
+    const radius = Math.max(0.5, surface.width / 2 - 1.1 * r.giantScale);
+    if (surface.distance <= radius) return false;
+    const scale = radius / surface.distance;
+    // Only constrain horizontal movement: jumps and item animations keep their height.
+    r.pos.x = surface.center.x + (r.pos.x - surface.center.x) * scale;
+    r.pos.z = surface.center.z + (r.pos.z - surface.center.z) * scale;
+    // No guidance before contact. At the edge only, point forward and slightly
+    // inward so the kart can leave the boundary instead of scraping along it.
+    if (!r.finished && r.stun === 0 && r.knockedTime === 0) {
+      const target = surface.center.clone().addScaledVector(surface.tangent, 8);
+      const angle = wrap(Math.atan2(target.x - r.pos.x, target.z - r.pos.z) - r.heading);
+      // Ease out near alignment instead of ending a constant-speed turn abruptly.
+      const correction = THREE.MathUtils.damp(0, angle, 2.2, dt);
+      r.heading += THREE.MathUtils.clamp(correction, -dt * 2.8, dt * 2.8);
+    }
+    return true;
   }
   hit(r: Racer) {
     if (r.immune > 0 || r.finished) return false;
@@ -361,13 +383,16 @@ export class Race {
         r.speed *= Math.exp(-dt * 2);
         continue;
       }
-      const input =
-          r.stun > 0 || r.knockedTime > 0
-            ? idleInput()
-            : r.human
-              ? (inputs[r.id] ?? idleInput())
-              : this.ai(r),
-        spec = karts[r.config.kart];
+      let input =
+        r.stun > 0 || r.knockedTime > 0
+          ? idleInput()
+          : r.human
+            ? (inputs[r.id] ?? idleInput())
+            : this.ai(r);
+      const child = r.human && r.config.childMode === true;
+      if (child && r.stun === 0 && r.knockedTime === 0)
+        input = { ...input, throttle: input.brake > 0 ? 0 : 1 };
+      const spec = karts[r.config.kart];
       r.steering = input.steer;
       r.braking = THREE.MathUtils.clamp(input.brake, 0, 1);
       if (input.use) this.use(r);
@@ -379,7 +404,7 @@ export class Race {
       if (input.brake > 0)
         r.speed -= dt * (r.airborne ? 2 : r.speed > 1 ? 25 : spec.acceleration * 0.7) * input.brake;
       if (!input.throttle && !input.brake) r.speed *= Math.exp(-dt * (r.airborne ? 0.08 : 0.7));
-      r.speed = THREE.MathUtils.clamp(r.speed, -7, max);
+      r.speed = THREE.MathUtils.clamp(r.speed, child ? 0 : -7, max);
       // Forward is (sin(heading), 0, cos(heading)): increasing heading turns left.
       r.heading -=
         input.steer *
@@ -392,6 +417,7 @@ export class Race {
       r.pos.z += Math.cos(r.heading) * r.speed * dt;
       r.pos.addScaledVector(r.knockback, dt);
       r.knockback.multiplyScalar(Math.exp(-dt * 1.7));
+      const touchedEdge = this.keepChildOnRoad(r, dt);
       let n = this.track.surface(r.pos, r.route);
       if (r.knockedTime === 0 && n.distance > n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) {
         const center = n.center,
@@ -448,9 +474,14 @@ export class Race {
       }
       if (Math.abs(r.speed) < 1 && input.throttle > 0) r.stuck += dt;
       else r.stuck = 0;
-      if (r.stuck > 5) {
+      if (r.stuck > 5 && (!child || touchedEdge)) {
         this.respawn(r);
       }
+      if (child && touchedEdge && input.throttle > 0 && r.stun === 0 && r.knockedTime === 0) {
+        // Measure forward progress, not wheel speed: a kart can spin against an edge.
+        r.assistedStuck = delta * this.track.length < dt * 0.5 ? r.assistedStuck + dt : 0;
+        if (r.assistedStuck > 2) this.respawn(r);
+      } else r.assistedStuck = 0;
       if (n.distance > 22 && r.knockedTime === 0) this.respawn(r);
       for (const obstacle of this.obstacles)
         if (
@@ -511,6 +542,8 @@ export class Race {
           b.speed *= 0.995;
         }
       }
+    // Racer separation and giant knockback happen after the normal movement constraint.
+    for (const r of this.racers) this.keepChildOnRoad(r, dt);
     for (const h of this.hazards) {
       h.ttl -= dt;
       if (h.kind === 'missile') {
@@ -554,6 +587,7 @@ export class Race {
     r.heading = Math.atan2(tangent.x, tangent.z);
     r.speed = 0;
     r.stuck = 0;
+    r.assistedStuck = 0;
     r.lastT = t;
     r.immune = 2;
     r.airborne = false;

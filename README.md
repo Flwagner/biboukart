@@ -22,6 +22,10 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 
 Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Après l'arrivée du premier humain, les autres disposent de 45 secondes ; la course se termine plus tôt si tous les humains sont arrivés.
 
+### Mode enfant
+
+Dans le garage, cochez **Mode enfant** sur la fiche du joueur concerné (choix mémorisé). Son kart accélère automatiquement, mais l’enfant dirige entièrement le kart : aucune correction de trajectoire ni de contresens tant qu’il ne touche pas le bord. Au contact du bord uniquement, le kart reste sur la route et se réoriente progressivement vers l’avant ; en cas de blocage persistant au bord, il est remis en piste. L’enfant utilise ses objets lui-même. Le frein est prioritaire et permet de s’arrêter, sans marche arrière ; relâchez-le pour repartir. L’assistance fonctionne au clavier, à la manette et au tactile, sans modifier la conduite des autres joueurs ni supprimer les effets des objets.
+
 ### Commandes par défaut
 
 | Action            | Clavier J1 | Clavier J2 | Manette standard |
