@@ -162,6 +162,15 @@ export class Race {
         p.addScaledVector(new THREE.Vector3(tangent.z, 0, -tangent.x), side);
         this.pickups.push({ t, pos: p, cooldown: 0 });
       }
+    // The scenic branch rewards exploration with gifts, not a guaranteed faster time.
+    const alternative = this.track.branch('alternative')!;
+    for (const u of [0.35, 0.7]) {
+      this.pickups.push({
+        t: alternative.start + u * (alternative.end - alternative.start),
+        pos: this.track.routeAt('alternative', u),
+        cooldown: 0,
+      });
+    }
   }
   random() {
     this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0;
@@ -193,10 +202,10 @@ export class Race {
       spec = karts[r.config.kart];
     const n = this.track.surface(r.pos, r.route),
       lookAhead =
-        n.route === 'shortcut'
+        n.route !== 'main'
           ? 7 + Math.abs(r.speed) * 0.35
           : profile.lookAhead + Math.abs(r.speed) * profile.speedLook,
-      target = this.track.target(n, lookAhead, preferShortcut);
+      target = this.track.target(n, lookAhead, preferShortcut, (r.id + r.lap) % 2 === 0);
     for (const obstacle of this.obstacles) {
       const ahead = ((obstacle.t - n.t + 1) % 1) * this.track.length;
       if (n.route === 'main' && ahead < profile.obstacleLook) {
@@ -229,8 +238,9 @@ export class Race {
             Math.sign(delta.dot(new THREE.Vector3(Math.cos(r.heading), 0, -Math.sin(r.heading)))) *
             -0.35;
       }
-    const later = this.track.target(n, lookAhead * 1.5, preferShortcut),
-      halfway = this.track.target(n, lookAhead * 0.75, preferShortcut);
+    const preferAlternative = (r.id + r.lap) % 2 === 0;
+    const later = this.track.target(n, lookAhead * 1.5, preferShortcut, preferAlternative),
+      halfway = this.track.target(n, lookAhead * 0.75, preferShortcut, preferAlternative);
     const headingA = Math.atan2(halfway.x - r.pos.x, halfway.z - r.pos.z),
       headingB = Math.atan2(later.x - halfway.x, later.z - halfway.z);
     const curvature = Math.abs(wrap(headingB - headingA)) / Math.max(4, lookAhead * 0.75);
@@ -256,7 +266,8 @@ export class Race {
   }
   keepChildOnRoad(r: Racer, dt: number): boolean {
     if (!r.human || !r.config.childMode) return false;
-    const surface = this.track.surface(r.pos, r.route);
+    // Project once against the union of all roads, with room for the child's kart.
+    const surface = this.track.surface(r.pos, r.route, 1.1 * r.giantScale);
     const radius = Math.max(0.5, surface.width / 2 - 1.1 * r.giantScale);
     if (surface.distance <= radius) return false;
     const scale = radius / surface.distance;
@@ -383,7 +394,10 @@ export class Race {
       r.giantScale += THREE.MathUtils.clamp((r.giant > 0 ? 2 : 1) - r.giantScale, -dt * 3, dt * 3);
       if (wasKnocked && r.knockedTime === 0) this.respawn(r);
       if (r.finished) {
-        r.speed *= Math.exp(-dt * 2);
+        r.speed = Math.min(
+          r.speed * Math.exp(-dt * 2),
+          karts[r.config.kart].speed * (r.boost > 0 ? 1.5 : 1),
+        );
         continue;
       }
       let input =
@@ -401,13 +415,13 @@ export class Race {
       if (input.use) this.use(r);
       const near = this.track.surface(r.pos, r.route),
         off = near.distance > near.width / 2;
-      const max = spec.speed * (r.boost > 0 ? 1.5 : 1) * (r.slow > 0 ? 0.5 : 1) * (off ? 0.48 : 1);
+      const max = spec.speed * (r.boost > 0 ? 1.5 : 1) * (r.slow > 0 ? 0.5 : 1) * (off ? 0.5 : 1);
       if (input.throttle > 0)
         r.speed += spec.acceleration * input.throttle * dt * (r.airborne ? 0.25 : 1);
       if (input.brake > 0)
         r.speed -= dt * (r.airborne ? 2 : r.speed > 1 ? 25 : spec.acceleration * 0.7) * input.brake;
       if (!input.throttle && !input.brake) r.speed *= Math.exp(-dt * (r.airborne ? 0.08 : 0.7));
-      r.speed = THREE.MathUtils.clamp(r.speed, child ? 0 : -7, max);
+      r.speed = THREE.MathUtils.clamp(r.speed, child ? 0 : -7 * (off ? 0.5 : 1), max);
       // Forward is (sin(heading), 0, cos(heading)): increasing heading turns left.
       r.heading -=
         input.steer *
@@ -426,10 +440,13 @@ export class Race {
         const center = n.center,
           delta = r.pos.clone().sub(center);
         delta.y = 0;
-        r.pos
-          .copy(center)
-          .addScaledVector(delta, (n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) / n.distance);
-        r.speed *= 0.93;
+        const scale = (n.width / 2 + (n.route === 'shortcut' ? 1 : 3)) / n.distance;
+        // The road edge constrains horizontal motion only. Copying the center's
+        // height here would reset a jumping kart's fall on every contact.
+        r.pos.x = center.x + delta.x * scale;
+        r.pos.z = center.z + delta.z * scale;
+        // Off-road speed is already capped at 50%; do not compound a penalty
+        // every frame while the kart is constrained against the outer edge.
         n = this.track.surface(r.pos, r.route);
       }
       const routeLap = Math.floor(Math.max(0, r.progress));
@@ -458,6 +475,7 @@ export class Race {
       // Only local, physical movement can advance race progress.
       if (
         r.knockedTime === 0 &&
+        Math.abs(r.speed) > 0.001 &&
         Math.abs(delta) * this.track.length <
           Math.abs(r.speed) * dt * this.track.maxProgressRatio + 2
       )
@@ -578,12 +596,10 @@ export class Race {
   }
   respawn(r: Racer) {
     const t = ((Math.max(0, r.progress) % 1) + 1) % 1;
-    const branch =
-      r.route === 'shortcut' && t >= this.track.shortcut.start && t <= this.track.shortcut.end;
-    const u = branch
-      ? (t - this.track.shortcut.start) / (this.track.shortcut.end - this.track.shortcut.start)
-      : t;
-    r.route = branch ? 'shortcut' : 'main';
+    const candidate = this.track.branch(r.route);
+    const branch = candidate && t >= candidate.start && t <= candidate.end ? candidate : undefined;
+    const u = branch ? (t - branch.start) / (branch.end - branch.start) : t;
+    r.route = branch ? branch.id : 'main';
     r.pos.copy(this.track.routeAt(r.route, u));
     r.previous.copy(r.pos);
     const tangent = this.track.routeTangent(r.route, u);

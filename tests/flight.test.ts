@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { updateFlight, type FlightBody } from '../src/flight';
-import { Race } from '../src/race';
+import { Race, idleInput } from '../src/race';
 function body(speed = 25): FlightBody {
   return {
     pos: { y: 2 },
@@ -13,6 +13,27 @@ function body(speed = 25): FlightBody {
   };
 }
 describe('real bump jumps', () => {
+  it('does not reset falling height when a jumping kart touches the road edge', () => {
+    const race = new Race(0, [{ character: 0, kart: 0, device: 'keyboard' }]);
+    race.racers.splice(1);
+    race.countdown = 0;
+    const r = race.racers[0],
+      t = 0.67,
+      tangent = race.track.tangent(t);
+    r.pos.copy(race.track.at(t));
+    r.pos.x += tangent.z * (race.track.width / 2 + 5);
+    r.pos.z -= tangent.x * (race.track.width / 2 + 5);
+    r.pos.y += 4;
+    r.speed = 20;
+    r.heading = Math.atan2(tangent.x, tangent.z);
+    r.airborne = true;
+    r.verticalSpeed = -3;
+    r.progress = r.lastT = t;
+    const height = r.pos.y;
+    race.update(1 / 60, [idleInput()]);
+    expect(r.airborne).toBe(true);
+    expect(r.pos.y).toBeCloseTo(height + (-3 - 20 / 60) / 60, 5);
+  });
   it.each([0, 1, 2])(
     'track %i launches from a real crest and lands without granting checkpoints',
     (index) => {

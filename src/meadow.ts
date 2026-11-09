@@ -22,7 +22,7 @@ export function meadowDetails(track: Track) {
       const p = center
         .clone()
         .add(new THREE.Vector3((random() - 0.5) * 10, 0, (random() - 0.5) * 10));
-      if (track.overlapsRoad(p, 'main', 2.5) || track.overlapsRoad(p, 'shortcut', 2.5)) continue;
+      if (track.overlapsAnyRoad(p, 2.5)) continue;
       p.y = track.terrainHeight(p);
       const shrub = i < 2;
       const s = shrub ? 0.7 + random() * 0.8 : 0.13 + random() * 0.15;

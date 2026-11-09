@@ -1,6 +1,17 @@
 import * as THREE from 'three';
 import { trackDefinitions } from './config';
-export type Route = 'main' | 'shortcut';
+export type Route = 'main' | 'shortcut' | 'alternative';
+export interface Branch {
+  id: Exclude<Route, 'main'>;
+  label: string;
+  start: number;
+  end: number;
+  width: number;
+  curve: THREE.Curve<THREE.Vector3>;
+  samples: THREE.Vector3[];
+  length: number;
+  entryEndT: number;
+}
 /** Use the real racing curve for every destination card. */
 export function trackPreviewPath(index: number) {
   const curve = new THREE.CatmullRomCurve3(
@@ -9,12 +20,16 @@ export function trackPreviewPath(index: number) {
     'catmullrom',
     0.3,
   );
+  const bounds = new THREE.Box3().setFromPoints(curve.getPoints(200));
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const scale = Math.min(195 / size.x, 120 / size.z);
   return (
     curve
       .getPoints(100)
       .map(
         (p, i) =>
-          `${i ? 'L' : 'M'}${(110 + p.x * 0.95).toFixed(1)} ${(72.5 + p.z * 0.65).toFixed(1)}`,
+          `${i ? 'L' : 'M'}${(110 + (p.x - center.x) * scale).toFixed(1)} ${(72.5 + (p.z - center.z) * scale).toFixed(1)}`,
       )
       .join(' ') + ' Z'
   );
@@ -99,15 +114,18 @@ export class Track {
   tangents: THREE.Vector3[];
   length: number;
   width: number;
-  shortcut: {
-    start: number;
-    end: number;
-    width: number;
-    curve: THREE.Curve<THREE.Vector3>;
-    samples: THREE.Vector3[];
-    length: number;
-    entryEndT: number;
-  };
+  shortcut: Branch;
+  branches: Branch[] = [];
+  get routes(): Route[] {
+    return ['main', ...this.branches.map((b) => b.id)];
+  }
+  branch(route: Route) {
+    return this.branches.find((b) => b.id === route);
+  }
+  routeWidth(route: Route) {
+    return this.branch(route)?.width ?? this.width;
+  }
+  islandRadius: number;
   maxProgressRatio: number;
   bumps: { t: number; height: number; halfLength: number }[] = [];
   constructor(public index: number) {
@@ -127,7 +145,8 @@ export class Track {
       [0.12, 0.77],
       [0.14, 0.71],
     ][index].map((t) => ({ t, height: [2.2, 2.6, 2, 2.8, 1.8][index], halfLength: 10 }));
-    this.samples = Array.from({ length: 512 }, (_, i) => this.at(i / 512));
+    this.samples = Array.from({ length: 1024 }, (_, i) => this.at(i / 1024));
+    this.islandRadius = Math.max(...this.samples.map((p) => Math.hypot(p.x, p.z))) + 65;
     this.tangents = Array.from({ length: 512 }, (_, i) => this.tangent(i / 512));
     const spec = shortcutDefinitions[index],
       a = this.at(spec.start),
@@ -145,9 +164,11 @@ export class Track {
       .sub(this.at((spec.start + spec.end) / 2));
     inward.y = 0;
     inward.normalize();
-    const curve = new ShortcutCurve(base, inward, [12, 20, 12, 18, 24][index]);
-    const shortcutSegments = index >= 3 ? 256 : 128;
+    const curve = new ShortcutCurve(base, inward, [50, 20, 12, 18, 24][index]);
+    const shortcutSegments = 512;
     this.shortcut = {
+      id: 'shortcut',
+      label: 'Raccourci',
       ...spec,
       curve,
       length: curve.getLength(),
@@ -156,6 +177,7 @@ export class Track {
       ),
       entryEndT: spec.start + 0.025,
     };
+    this.branches.push(this.shortcut);
     this.shortcut.samples = Array.from({ length: shortcutSegments + 1 }, (_, i) =>
       this.routeAt('shortcut', i / shortcutSegments),
     );
@@ -165,6 +187,49 @@ export class Track {
     if (detached)
       this.shortcut.entryEndT = Math.max(spec.start + 0.025, this.nearest(detached).t + 0.015);
     this.maxProgressRatio = Math.max(1, arc / this.shortcut.length) * 1.25;
+    // A full-width scenic route, distinct from the narrow technical shortcut.
+    const start = 0.57,
+      end = 0.78;
+    const middle = this.at((start + end) / 2);
+    const tangent = this.tangent((start + end) / 2);
+    const side = Math.sign(middle.x * tangent.z - middle.z * tangent.x) || -1;
+    const branchStart = this.at(start),
+      branchEnd = this.at(end);
+    const mainArc = (end - start) * this.length;
+    // Parallel offsets of S-bends can fold into cusps. An independent arc avoids
+    // those folds while its endpoint handles preserve tangential connections.
+    const alternativeBase = new THREE.CubicBezierCurve3(
+      branchStart,
+      branchStart.clone().addScaledVector(this.tangent(start), mainArc * 0.3),
+      branchEnd.clone().addScaledVector(this.tangent(end), -mainArc * 0.3),
+      branchEnd,
+    );
+    const outward = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize().multiplyScalar(side);
+    const alternativeCurve = new ShortcutCurve(alternativeBase, outward, 65);
+    const alternative: Branch = {
+      id: 'alternative',
+      label: ['Verger', 'Corniche', 'Palmeraie', 'Village', 'Petites rues'][index],
+      start,
+      end,
+      width: this.width - 1,
+      curve: alternativeCurve,
+      samples: [],
+      length: alternativeCurve.getLength(),
+      entryEndT: start + 0.025,
+    };
+    this.branches.push(alternative);
+    alternative.samples = Array.from({ length: 513 }, (_, i) =>
+      this.routeAt(alternative.id, i / 512),
+    );
+    const exitEntry = alternative.samples.find(
+      (p) => this.nearest(p).distance > this.width / 2 + 0.3,
+    );
+    if (exitEntry)
+      alternative.entryEndT = Math.max(start + 0.025, this.nearest(exitEntry).t + 0.045);
+    this.maxProgressRatio = Math.max(
+      this.maxProgressRatio,
+      (((end - start) * this.length) / alternative.length) * 1.25,
+    );
   }
   elevation(t: number) {
     return this.baseElevation(t) + this.bumpHeight(t);
@@ -203,12 +268,18 @@ export class Track {
     );
   }
   terrainHeight(p: THREE.Vector3) {
-    if (this.index === 2 && Math.hypot(p.x, p.z) > 108) return -0.8;
+    if (this.index === 2 && Math.hypot(p.x, p.z) > this.islandRadius) return -0.8;
     const main = this.nearest(p),
-      branch = projection(this.shortcut.samples, false, p);
-    const useBranch = branch.distance - this.shortcut.width / 2 < main.distance - this.width / 2;
+      candidates = this.branches.map((b) => ({
+        ...projection(b.samples, false, p),
+        width: b.width,
+      })),
+      branch = candidates.reduce((a, b) =>
+        a.distance - a.width / 2 < b.distance - b.width / 2 ? a : b,
+      );
+    const useBranch = branch.distance - branch.width / 2 < main.distance - this.width / 2;
     const distance = useBranch ? branch.distance : main.distance,
-      width = useBranch ? this.shortcut.width : this.width;
+      width = useBranch ? branch.width : this.width;
     const height = useBranch ? branch.center.y : this.baseElevation(main.t);
     let terrain =
       Math.max(0, height - 0.65) * Math.exp(-((Math.max(0, distance - width / 2) / 28) ** 2));
@@ -219,8 +290,9 @@ export class Track {
         terrain,
         this.baseElevation(main.t) - (Math.abs(this.bank(main.t)) * this.width) / 2 - 0.65,
       );
-    if (branch.distance < this.shortcut.width / 2 + 6)
-      terrain = Math.min(terrain, branch.center.y - 0.65);
+    for (const candidate of candidates)
+      if (candidate.distance < candidate.width / 2 + 6)
+        terrain = Math.min(terrain, candidate.center.y - 0.65);
     return Math.max(-0.1, terrain);
   }
   bank(t: number) {
@@ -239,9 +311,10 @@ export class Track {
   }
   routeAt(route: Route, u: number) {
     if (route === 'main') return this.at(u);
-    if (u < 0) return this.at(this.shortcut.start + (u * this.shortcut.length) / this.length);
-    if (u > 1) return this.at(this.shortcut.end + ((u - 1) * this.shortcut.length) / this.length);
-    const point = this.shortcut.curve.getPointAt(u),
+    const branch = this.branch(route)!;
+    if (u < 0) return this.at(branch.start + (u * branch.length) / this.length);
+    if (u > 1) return this.at(branch.end + ((u - 1) * branch.length) / this.length);
+    const point = branch.curve.getPointAt(u),
       main = projection(this.samples, true, point);
     const merge =
       1 - THREE.MathUtils.smoothstep(main.distance, this.width / 2 + 0.5, this.width / 2 + 6);
@@ -256,8 +329,11 @@ export class Track {
     const projected =
       route === 'main'
         ? projection(this.samples, true, p)
-        : projection(this.shortcut.samples, false, p);
-    return projected.distance <= (route === 'main' ? this.width : this.shortcut.width) / 2 + margin;
+        : projection(this.branch(route)!.samples, false, p);
+    return projected.distance <= this.routeWidth(route) / 2 + margin;
+  }
+  overlapsAnyRoad(p: THREE.Vector3, margin = 0) {
+    return this.routes.some((route) => this.overlapsRoad(p, route, margin));
   }
   routeTangent(route: Route, u: number) {
     return this.routeAt(route, u + 0.0001)
@@ -267,7 +343,7 @@ export class Track {
   nearest(p: THREE.Vector3) {
     let index = 0,
       distance = Infinity;
-    for (let i = 0; i < 512; i++) {
+    for (let i = 0; i < this.samples.length; i++) {
       const a = this.samples[i],
         d = (p.x - a.x) ** 2 + (p.z - a.z) ** 2;
       if (d < distance) {
@@ -275,53 +351,66 @@ export class Track {
         index = i;
       }
     }
-    return { index, t: index / 512, distance: Math.sqrt(distance) };
+    return { index, t: index / this.samples.length, distance: Math.sqrt(distance) };
   }
-  surface(p: THREE.Vector3, hint: Route = 'main'): Surface {
-    const main = projection(this.samples, true, p),
-      branch = projection(this.shortcut.samples, false, p);
-    const onMain = main.distance <= this.width / 2 + 0.05;
-    const onBranch = branch.distance <= this.shortcut.width / 2 + 0.05;
-    // A junction is the union of both paved surfaces. Never clamp a kart that is
-    // still on the main road against the narrower shortcut's invisible boundary.
-    const keepBranch = hint === 'shortcut' && onBranch && branch.u > 0.015 && branch.u < 0.985;
-    const chooseBranch =
-      keepBranch ||
+  surface(p: THREE.Vector3, hint: Route = 'main', inset = 0): Surface {
+    const radius = (width: number) => Math.max(0.5, width / 2 - inset);
+    const main = projection(this.samples, true, p);
+    const candidates = this.branches.map((b) => ({
+      ...projection(b.samples, false, p),
+      branch: b,
+    }));
+    const onMain = main.distance <= radius(this.width) + 0.000001;
+    const kept = candidates.find(
+      (c) =>
+        c.branch.id === hint &&
+        c.distance <= radius(c.branch.width) + 0.000001 &&
+        c.u > 0.015 &&
+        c.u < 0.985,
+    );
+    // A junction is the union of all paved surfaces. The child-mode inset uses
+    // this same projection pass, so no road edge becomes an invisible fork wall.
+    const closest = candidates.reduce((a, b) =>
+      a.distance - radius(a.branch.width) < b.distance - radius(b.branch.width) ? a : b,
+    );
+    const branch =
+      kept ??
       (!onMain &&
-        (onBranch || branch.distance - this.shortcut.width / 2 < main.distance - this.width / 2));
-    const chosen = chooseBranch ? branch : main,
-      route = chooseBranch ? 'shortcut' : 'main';
-    const t = chooseBranch
-      ? this.shortcut.start + branch.u * (this.shortcut.end - this.shortcut.start)
+      closest.distance - radius(closest.branch.width) < main.distance - radius(this.width)
+        ? closest
+        : undefined);
+    const chosen = branch ?? main,
+      route = branch ? branch.branch.id : 'main',
+      width = this.routeWidth(route);
+    const t = branch
+      ? branch.branch.start + branch.u * (branch.branch.end - branch.branch.start)
       : main.u;
-    const bank = chooseBranch ? 0 : this.bank(t);
+    const bank = branch ? 0 : this.bank(t);
     return {
       ...chosen,
       route,
       t,
       height:
-        chosen.distance > (chooseBranch ? this.shortcut.width : this.width) / 2
+        chosen.distance > width / 2
           ? this.terrainHeight(p)
           : chosen.center.y + chosen.lateral * bank,
-      width: chooseBranch ? this.shortcut.width : this.width,
+      width,
       bank,
     };
   }
-  target(surface: Surface, distance: number, preferShortcut: boolean) {
-    if (surface.route === 'shortcut')
-      return this.routeAt('shortcut', surface.u + distance / this.shortcut.length);
+  target(surface: Surface, distance: number, preferShortcut: boolean, preferAlternative = false) {
+    if (surface.route !== 'main')
+      return this.routeAt(surface.route, surface.u + distance / this.branch(surface.route)!.length);
     const target = surface.t + distance / this.length;
     // A missed entry must stay on the main road, never aim across the gap mid-corner.
-    if (
-      preferShortcut &&
-      surface.t < this.shortcut.entryEndT &&
-      target > this.shortcut.start &&
-      target < this.shortcut.end
-    )
-      return this.routeAt(
-        'shortcut',
-        (target - this.shortcut.start) / (this.shortcut.end - this.shortcut.start),
-      );
+    for (const branch of this.branches)
+      if (
+        (branch.id === 'shortcut' ? preferShortcut : preferAlternative) &&
+        surface.t < branch.entryEndT &&
+        target > branch.start &&
+        target < branch.end
+      )
+        return this.routeAt(branch.id, (target - branch.start) / (branch.end - branch.start));
     return this.at(target);
   }
   createObstacle(): Obstacle {

@@ -40,14 +40,13 @@ export function createRoadGeometry(track: Track) {
         .lerp(b, 0.5)
         .addScaledVector(na, (left + right) * 0.5);
       if (embankment) {
-        const onRoad = (p: THREE.Vector3, margin: number) =>
-          track.overlapsRoad(p, 'main', margin) || track.overlapsRoad(p, 'shortcut', margin);
+        const onRoad = (p: THREE.Vector3, margin: number) => track.overlapsAnyRoad(p, margin);
         // Also test our own route: inside a tight bend, a shoulder can fold
         // across a different part of that same road, not only the shortcut.
         if (onRoad(middle, 1.2) || ps.some((p) => onRoad(p, 0.1))) continue;
       } else if (
         edgeMarking &&
-        track.overlapsRoad(middle, route === 'main' ? 'shortcut' : 'main', 0.25)
+        track.routes.some((other) => other !== route && track.overlapsRoad(middle, other, 0.25))
       )
         continue;
       if (route === 'main')
@@ -55,7 +54,7 @@ export function createRoadGeometry(track: Track) {
           (p, j) => (p.y += track.bank((i + (j > 1 ? 1 : 0)) / segments) * (j % 2 ? right : left)),
         );
       if (embankment) {
-        const width = route === 'main' ? track.width : track.shortcut.width;
+        const width = track.routeWidth(route);
         ps.forEach((p, j) => {
           const lateral = j % 2 ? right : left,
             fraction = THREE.MathUtils.clamp((Math.abs(lateral) - width / 2 - 0.7) / 5.3, 0, 1);
@@ -70,8 +69,8 @@ export function createRoadGeometry(track: Track) {
     }
   };
   ribbon(-track.width / 2, track.width / 2, 0.02, () => roadColor);
-  for (const route of ['main', 'shortcut'] as Route[]) {
-    const width = route === 'main' ? track.width : track.shortcut.width;
+  for (const route of track.routes) {
+    const width = track.routeWidth(route);
     for (const side of [-1, 1])
       for (let band = 0; band < 4; band++)
         ribbon(
@@ -83,17 +82,19 @@ export function createRoadGeometry(track: Track) {
           true,
         );
   }
-  ribbon(-track.shortcut.width / 2, track.shortcut.width / 2, 0.025, () => roadColor, 'shortcut');
-  for (const side of [-1, 1])
-    ribbon(
-      (side * track.shortcut.width) / 2,
-      side * (track.shortcut.width / 2 + 0.25),
-      0.04,
-      () => white,
-      'shortcut',
-      false,
-      true,
-    );
+  for (const branch of track.branches) {
+    ribbon(-branch.width / 2, branch.width / 2, 0.025, () => roadColor, branch.id);
+    for (const side of [-1, 1])
+      ribbon(
+        (side * branch.width) / 2,
+        side * (branch.width / 2 + 0.25),
+        0.04,
+        () => white,
+        branch.id,
+        false,
+        true,
+      );
+  }
   for (const side of [-1, 1])
     ribbon(
       (side * track.width) / 2,

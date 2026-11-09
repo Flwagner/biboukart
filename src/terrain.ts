@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Track } from './track';
 import { trackDefinitions } from './config';
-export const terrainLayout = { width: 300, depth: 280, segments: 48 };
+export const terrainLayout = { width: 540, depth: 540, segments: 80 };
 export function createTerrainGeometry(track: Track) {
   const { width, depth, segments } = terrainLayout,
     geometry = new THREE.PlaneGeometry(width, depth, segments, segments);

@@ -114,11 +114,7 @@ export class BiomeDetails {
     center.addScaledVector(normal, side);
     // A conservative radius keeps the *whole* model off both paved corridors.
     for (let i = 0; i < 150; i++) {
-      if (
-        !this.track.overlapsRoad(center, 'main', radius + 3) &&
-        !this.track.overlapsRoad(center, 'shortcut', radius + 3)
-      )
-        break;
+      if (!this.track.overlapsAnyRoad(center, radius + 3)) break;
       center.addScaledVector(normal, Math.sign(side) * 3);
     }
     center.y = this.track.terrainHeight(center);
@@ -201,10 +197,10 @@ export class BiomeDetails {
     ocean.rotation.x = -Math.PI / 2;
     ocean.position.y = -0.16;
     this.animated.add(ocean);
-    // Sand and foam meet the original island edge; driving terrain is not changed.
+    // Keep the coast outside the larger circuit and its alternative routes.
     for (const [inner, outer, color, y] of [
-      [105, 110, '#f0dba3', -0.12],
-      [110, 112, '#b9e6da', -0.14],
+      [this.track.islandRadius - 3, this.track.islandRadius + 2, '#f0dba3', -0.12],
+      [this.track.islandRadius + 2, this.track.islandRadius + 4, '#b9e6da', -0.14],
     ] as const) {
       const shore = new THREE.Mesh(new THREE.RingGeometry(inner, outer, 96), this.material(color));
       shore.rotation.x = -Math.PI / 2;

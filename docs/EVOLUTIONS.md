@@ -1,4 +1,27 @@
-# Évolutions : trois lots autonomes
+# Évolutions
+
+## Hors route : vitesse divisée par deux
+
+- Vitesse maximale limitée à 50 % hors asphalte, en marche avant comme en marche arrière, sur la piste principale, les alternatives et les raccourcis. Suppression du multiplicateur de 0,93 appliqué à chaque contact avec la limite extérieure, qui finissait par presque immobiliser le kart malgré l'accélération.
+- Le kart peut accélérer jusqu'à cette limite hors route, puis retrouver sa vitesse normale en revenant sur l'asphalte. Turbos, effets d'objets, contrainte de position et mode enfant conservés.
+- Validation : **286 tests unitaires réussis**, dont 20 contrôles dédiés aux deux côtés de toutes les routes des cinq circuits, au départ arrêté, aux objets, au retour sur route et à la marche arrière. Build TypeScript/Vite réussi.
+
+## Circuits longs et choix de parcours
+
+- Cinq tracés remaniés de 969 à 1 188 mètres, environ deux fois plus longs, avec des virages dans les deux sens, des S et des portions rapides. Un embranchement large sur chaque circuit, en plus du raccourci technique conservé : verger, corniche, palmeraie, village et petites rues. Deux cadeaux sur chaque alternative compensent son détour ; la route principale reste plus rapide.
+- Routes secondaires définies par leur courbe, largeur, longueur et intervalle de progression. Maillage asphalté, raccords, terrain, dégagement des décors, classement, checkpoints et remise en piste prennent en compte toutes les routes. Panneaux d'annonce avant les choix, mini-carte avec toutes les branches, aperçus de sélection ajustés aux dimensions réelles.
+- Les alternatives utilisent des arcs indépendants avec raccords tangents, plutôt qu'un simple décalage latéral des S qui pourrait replier le ruban de route. Leur rayon minimal et l'absence d'auto-intersection sont testés. À kart identique, sans cadeaux, obstacles ni turbos, les sections comparées prennent respectivement **9,60 / 10,43 s**, **11,43 / 13,10 s**, **10,10 / 10,27 s**, **11,18 / 12,12 s** et **12,13 / 13,78 s** pour route principale / alternative : détour limité, compensé par les cadeaux supplémentaires.
+- Les bots alternent les parcours selon leur identité et leur tour ; tous les points utilisés pour anticiper un virage suivent le même choix. L'assistance enfant utilise l'union des corridors praticables, avec la marge du kart, en une seule projection : elle ne bloque plus la sortie de la route principale vers une branche.
+- Terrain, côte de l'Archipel, décors lointains, couverture des ombres et étendue de la neige adaptés au nouvel espace. Repères spécifiques le long de chaque alternative. Routes superposées et nouvelles mécaniques de pilotage hors périmètre.
+- Trois cas limites révélés par les nouvelles courses sont corrigés : la projection géométrique d'un kart arrêté ne modifie plus sa progression ; la contrainte horizontale du bord ne réinitialise plus la hauteur d'un kart en plein saut ; un kart déjà arrivé retrouve bien sa limite de vitesse normale à l'expiration du turbo.
+- Tests dédiés : `tests/branches.test.ts`, `tests/routeSigns.test.ts`, `e2e/branches.spec.ts`. Les contrôles historiques du terrain et du dégagement des décors couvrent désormais aussi les alternatives. Les courses complètes des cinq circuits restent vérifiées aux trois difficultés, avec et sans préférence explicite pour les raccourcis.
+- Captures reproductibles : `test-results/alternative-{0,1,2,3,4}.png`, `test-results/circuit-overview-{0,1,2,3,4}.png`, `test-results/alternative-mobile-duo.png`, `test-results/alternative-four-players.png`.
+
+Validation : **266 tests unitaires et 12 scénarios navigateur ciblés réussis**, dont les cinq alternatives parcourues sur trois tours, le mode enfant sur PC/tactile, les mini-cartes à deux/quatre vues, une course complète à six pilotes avec podium, commandes clavier, pause et revanche. Sur six reconstructions en écran partagé, les nombres de géométries GPU sont **176, 184, 194, 176, 184, 194** : pas de croissance dans ce scénario. Les simulations longues et le test de six reconstructions disposent d'un délai adapté aux pistes agrandies et au rendu logiciel.
+
+Build TypeScript/Vite et test statique de production sous `/biboukart/` réussis. Formatage des fichiers modifiés validé ; le contrôle global conserve l'écart préexistant dans `e2e/fullscreen.spec.ts`, non modifié.
+
+Limites : contrôles navigateur en rendu logiciel et tactile émulé ; aucune certification de fluidité sur téléphone ou GPU physique. Les branches ne sont pas des routes superposées.
 
 ## Généralisation graphique — tous les circuits, pilotes et karts
 

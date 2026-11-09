@@ -76,6 +76,8 @@ test('full menu → selection → keyboard driving → pause → results → rem
 test('four split-screen views, independent controls and stable resource counts', async ({
   page,
 }) => {
+  // Six full rebuilds of the longer circuits plus four software-rendered views.
+  test.setTimeout(180000);
   await ready(page);
   await page.locator('#play').click();
   await page.locator('[data-count="4"]').click();

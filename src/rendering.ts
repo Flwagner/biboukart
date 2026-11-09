@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createRouteSigns } from './routeSigns';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {
@@ -493,15 +494,15 @@ export class Renderer {
     this.renderer.setClearColor('#b4dce9');
     this.scene.add(this.world);
     this.scene.add(this.ambient);
-    this.sun.position.set(-90, 140, 65);
+    this.sun.position.set(-180, 280, 130);
     this.sun.castShadow = true;
     Object.assign(this.sun.shadow.camera, {
-      left: -155,
-      right: 155,
-      top: 155,
-      bottom: -155,
+      left: -245,
+      right: 245,
+      top: 245,
+      bottom: -245,
       near: 1,
-      far: 400,
+      far: 800,
     });
     this.sun.shadow.bias = -0.0003;
     this.sun.shadow.normalBias = 0.12;
@@ -620,8 +621,13 @@ export class Renderer {
     ground.castShadow = false;
     this.world.add(ground);
     if (track.index === 2) {
-      const island = mesh(new THREE.CylinderGeometry(108, 113, 0.3, 48), def.ground, 0, -0.18, 0);
-      island.scale.z = 0.95;
+      const island = mesh(
+        new THREE.CylinderGeometry(track.islandRadius, track.islandRadius + 5, 0.3, 64),
+        def.ground,
+        0,
+        -0.18,
+        0,
+      );
       this.world.add(island);
     }
     const terrainGeometry = createTerrainGeometry(track);
@@ -642,8 +648,9 @@ export class Renderer {
     );
     road.receiveShadow = true;
     this.world.add(road);
-    for (let i = 0; i < 70; i++) {
-      const t = i / 70,
+    const dashCount = Math.ceil(track.length / 7);
+    for (let i = 0; i < dashCount; i++) {
+      const t = i / dashCount,
         p = track.at(t),
         tan = track.tangent(t),
         dash = mesh(box, '#d6d5c5', p.x, p.y + 0.04, p.z);
@@ -719,17 +726,9 @@ export class Renderer {
     };
     const treePositions: THREE.Matrix4[] = [];
     const rockPositions: THREE.Matrix4[] = [];
-    for (let i = 0; i < 260; i++) {
-      const p = new THREE.Vector3((random() - 0.5) * 260, 0, (random() - 0.5) * 240);
-      const branchDistance = Math.min(
-        ...track.shortcut.samples.map((s) => Math.hypot(p.x - s.x, p.z - s.z)),
-      );
-      if (
-        track.nearest(p).distance < track.width / 2 + 5 ||
-        branchDistance < track.shortcut.width / 2 + 4 ||
-        p.length() > 130
-      )
-        continue;
+    for (let i = 0; i < 400; i++) {
+      const p = new THREE.Vector3((random() - 0.5) * 450, 0, (random() - 0.5) * 450);
+      if (track.overlapsAnyRoad(p, 5) || p.length() > 225) continue;
       const s = 1 + random() * 2;
       p.y = track.terrainHeight(p);
       if (track.index === 1) {
@@ -789,7 +788,7 @@ export class Renderer {
       if (track.index === 4) {
         const height = 25 + (i % 4) * 12;
         const tower = new THREE.Group();
-        tower.position.set(Math.sin(i * 2.4) * 180, 0, Math.cos(i * 2.4) * 170);
+        tower.position.set(Math.sin(i * 2.4) * 300, 0, Math.cos(i * 2.4) * 290);
         block(
           tower,
           ['#8397ad', '#94a5b6', '#798ba3'][i % 3],
@@ -820,8 +819,8 @@ export class Renderer {
       if (track.index === 3) {
         const height = 48 + (i % 4) * 14,
           radius = 28 + (i % 3) * 7;
-        const x = Math.sin(i * 2.4) * 180,
-          z = Math.cos(i * 2.4) * 170;
+        const x = Math.sin(i * 2.4) * 300,
+          z = Math.cos(i * 2.4) * 290;
         const peak = mesh(alpinePeakGeometry(radius, height, i), '#9aafbf', x, height / 2 - 2, z);
         this.world.add(peak);
         const cap = mesh(
@@ -841,9 +840,9 @@ export class Renderer {
             ? new THREE.CylinderGeometry(15 + (i % 3) * 6, 24 + (i % 3) * 8, 25 + (i % 4) * 7, 9)
             : new THREE.SphereGeometry(1, 12, 8),
         track.index === 1 ? '#b87955' : track.index === 2 ? '#74afa4' : '#79a46f',
-        Math.sin(i * 2.4) * 180,
+        Math.sin(i * 2.4) * 300,
         8,
-        Math.cos(i * 2.4) * 170,
+        Math.cos(i * 2.4) * 290,
       );
       if (track.index === 0) hill.scale.set(48 + (i % 3) * 12, 14 + (i % 4) * 5, 38);
       if (track.index === 2) hill.scale.set(28 + (i % 3) * 10, 18 + (i % 4) * 6, 30);
@@ -852,6 +851,7 @@ export class Renderer {
       });
       this.world.add(hill);
     }
+    this.world.add(createRouteSigns(track));
     const decor = scenery(track);
     this.world.add(decor.group);
     this.animatedScenery = decor.moving;
@@ -899,9 +899,9 @@ export class Renderer {
     if (track.index === 3) {
       const positions = new Float32Array(600 * 3);
       for (let i = 0; i < positions.length; i += 3) {
-        positions[i] = (random() - 0.5) * 230;
+        positions[i] = (random() - 0.5) * 460;
         positions[i + 1] = random() * 55;
-        positions[i + 2] = (random() - 0.5) * 230;
+        positions[i + 2] = (random() - 0.5) * 460;
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));

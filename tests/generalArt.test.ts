@@ -48,8 +48,7 @@ describe('art direction throughout the game', () => {
     expect(art.footprints.length).toBeGreaterThan(15);
     for (const footprint of art.footprints) {
       const p = new THREE.Vector3(footprint.x, 0, footprint.z);
-      expect(track.overlapsRoad(p, 'main', footprint.radius + 2.9), footprint.kind).toBe(false);
-      expect(track.overlapsRoad(p, 'shortcut', footprint.radius + 2.9), footprint.kind).toBe(false);
+      expect(track.overlapsAnyRoad(p, footprint.radius + 2.9), footprint.kind).toBe(false);
     }
     expect(track.samples.map((point) => point.toArray())).toEqual(before);
     const materialIds = new Set<string>();

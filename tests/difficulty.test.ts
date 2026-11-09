@@ -8,6 +8,17 @@ const matrix = (['easy', 'normal', 'hard'] as Difficulty[]).flatMap((difficulty)
   ),
 );
 describe('fair and adjustable bot difficulty', () => {
+  it('keeps the physical speed limit when a finishing kart loses its turbo', () => {
+    const race = new Race(0, [player]);
+    race.countdown = 0;
+    const r = race.racers[1];
+    r.finished = true;
+    r.boost = 0.001;
+    r.speed = karts[r.config.kart].speed * 1.5;
+    race.update(1 / 60, [idleInput()]);
+    expect(r.boost).toBe(0);
+    expect(r.speed).toBeLessThanOrEqual(karts[r.config.kart].speed);
+  });
   it.each(matrix)(
     '$difficulty / track $track / shortcuts $shortcuts: all six finish without unintended recovery or illegal speeds',
     ({ difficulty, track, shortcuts }) => {
@@ -48,7 +59,8 @@ describe('fair and adjustable bot difficulty', () => {
       expect(recoveries.every(Boolean)).toBe(true);
       if (shortcuts) expect(race.racers.some((r) => r.shortcutPasses === 3)).toBe(true);
     },
-    30000,
+    // Longer circuits double the simulated race distance; allow slower CI hosts.
+    60000,
   );
   it('changes AI decisions, not human acceleration or physical limits', () => {
     const speeds = [];

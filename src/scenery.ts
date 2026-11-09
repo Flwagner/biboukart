@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Track, Obstacle } from './track';
+import type { Track, Obstacle, Route } from './track';
 
 /** Curved, tapered palm leaf instead of a rectangular plank. */
 export function palmFrondGeometry() {
@@ -61,17 +61,14 @@ export function scenery(track: Track) {
     parent.add(mesh);
     return mesh;
   };
-  const location = (t: number, side: number, clearance = 6) => {
-    const p = track.at(t),
-      tan = track.tangent(t);
+  const location = (t: number, side: number, clearance = 6, route: Route = 'main') => {
+    const p = track.routeAt(route, t),
+      tan = track.routeTangent(route, t);
     p.addScaledVector(new THREE.Vector3(tan.z, 0, -tan.x).normalize(), side);
     const normal = new THREE.Vector3(tan.z, 0, -tan.x).normalize();
     // Decorations must clear both roads, including the inside of shortcut bends.
     for (let attempt = 0; attempt < 60; attempt++) {
-      const branch =
-        Math.min(...track.shortcut.samples.map((s) => Math.hypot(p.x - s.x, p.z - s.z))) -
-        track.shortcut.width / 2;
-      if (track.nearest(p).distance - track.width / 2 >= clearance && branch >= clearance) break;
+      if (!track.overlapsAnyRoad(p, clearance)) break;
       p.addScaledVector(normal, Math.sign(side) * 3);
     }
     p.y = track.terrainHeight(p);
@@ -266,7 +263,7 @@ export function scenery(track: Track) {
           side * (track.width / 2 + 1),
         );
         if (
-          track.overlapsRoad(p, 'shortcut', 1) ||
+          track.branches.some((b) => track.overlapsRoad(p, b.id, 1)) ||
           track.nearest(p).distance < track.width / 2 + 0.5
         )
           continue;
@@ -377,6 +374,63 @@ export function scenery(track: Track) {
     sails.traverse((object) => {
       if (object instanceof THREE.Mesh) object.castShadow = true;
     });
+  // Each full-width fork has an identifiable destination rather than empty parallel asphalt.
+  for (let i = 0; i < 8; i++) {
+    const u = 0.25 + Math.floor(i / 2) * 0.16;
+    const p = location(u, (i % 2 ? 1 : -1) * 19, 7, 'alternative');
+    const landmark = new THREE.Group();
+    landmark.name = `alternative-landmark-${track.index}-${i}`;
+    landmark.position.copy(p);
+    const tangent = track.routeTangent('alternative', u);
+    landmark.rotation.y = Math.atan2(tangent.x, tangent.z);
+    if (track.index === 0 || track.index === 2) {
+      add(landmark, '#8c6847', [0.65, 5, 0.65], [0, 2.5, 0]);
+      if (track.index === 0) {
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 7), material('#689747'));
+        crown.position.y = 5;
+        landmark.add(crown);
+        for (let fruit = 0; fruit < 5; fruit++) {
+          const apple = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 5), material('#d66b4c'));
+          apple.position.set(
+            Math.sin(fruit * 2.4) * 2.25,
+            4.5 + (fruit % 2),
+            Math.cos(fruit * 2.4) * 2.25,
+          );
+          landmark.add(apple);
+        }
+      } else {
+        for (let leaf = 0; leaf < 6; leaf++) {
+          const frond = new THREE.Mesh(palmFrondGeometry(), material('#498c62'));
+          frond.position.y = 5;
+          frond.rotation.y = (leaf * Math.PI) / 3;
+          landmark.add(frond);
+        }
+      }
+    } else if (track.index === 1) {
+      for (let layer = 0; layer < 4; layer++) {
+        const rock = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.7 - layer * 0.3, 3.2 - layer * 0.3, 1.8, 7),
+          material(layer % 2 ? '#bd7959' : '#dc9d70'),
+        );
+        rock.position.y = 0.9 + layer * 1.7;
+        landmark.add(rock);
+      }
+    } else {
+      add(landmark, track.index === 3 ? '#ad815f' : '#d6b49a', [6, 4, 5], [0, 2, 0]);
+      for (const side of [-1, 1]) {
+        const roof = add(
+          landmark,
+          track.index === 3 ? '#eff7fc' : '#578c80',
+          [3.8, 0.35, 6],
+          [side * 1.5, 4.8, 0],
+        );
+        roof.rotation.z = -side * 0.45;
+        add(landmark, '#ffe2a3', [1.2, 1.3, 0.12], [side * 1.8, 2.3, 2.55]);
+      }
+      add(landmark, '#66544a', [1, 2.3, 0.12], [0, 1.15, 2.55]);
+    }
+    group.add(landmark);
+  }
   return { group, moving };
 }
 export function obstacleModel(obstacle: Obstacle) {

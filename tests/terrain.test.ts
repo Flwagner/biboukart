@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { Track, type Route } from '../src/track';
+import { Track } from '../src/track';
 import { createTerrainGeometry, terrainLayout } from '../src/terrain';
 /** Interpolate the actual rendered triangles, not only the analytical height function. */
 function meshHeight(geometry: THREE.BufferGeometry, p: THREE.Vector3) {
@@ -24,10 +24,10 @@ describe('terrain never buries a paved road or shortcut merge', () => {
     (index) => {
       const track = new Track(index),
         terrain = createTerrainGeometry(track);
-      for (const route of ['main', 'shortcut'] as Route[])
+      for (const route of track.routes)
         for (let step = 0; step <= 256; step++) {
           const u = step / 256,
-            width = route === 'main' ? track.width : track.shortcut.width,
+            width = track.routeWidth(route),
             center = track.routeAt(route, u),
             tangent = track.routeTangent(route, u),
             normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();

@@ -8,7 +8,7 @@ Un jeu de karting 3D stylisé original, entièrement dans le navigateur. **Three
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
 - 8 personnages et 8 karts aux silhouettes et caractéristiques différentes.
 - Direction artistique « jouets de collection » sur les cinq circuits, huit pilotes et huit karts : carrosseries sculptées, peinture satinée, pneus mats, métal et visages expressifs. Prairie conservée comme référence ; Canyon stratifié, Archipel à eau animée et palmiers courbes, Col aux chalets fumants et sommets sculptés, Boulevard aux vitrines, balcons et jardins urbains. Chaque univers possède sa propre ambiance lumineuse.
-- 5 circuits : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons (montagnes enneigées, sapins, chalets et neige animée) et Boulevard des bibous (immeubles, vitrines, lampadaires et feux). Chacun propose du relief, un raccourci et un obstacle mobile.
+- 5 circuits de 969 à 1 188 mètres : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons et Boulevard des bibous. Virages gauche/droite, enchaînements en S, lignes droites, relief, raccourci technique et véritable embranchement sur chaque circuit.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
 - Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
 - Moulins, arches rocheuses et palmiers ; terrain vallonné, bosses permettant de vrais sauts, obstacles mobiles annoncés et raccourcis étroits éloignés du tracé principal.
@@ -22,6 +22,20 @@ Un jeu de karting 3D stylisé original, entièrement dans le navigateur. **Three
 - Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
 
 Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Après l'arrivée du premier humain, les autres disposent de 45 secondes ; la course se termine plus tôt si tous les humains sont arrivés.
+
+### Des circuits à explorer
+
+Les tracés principaux mesurent environ deux fois la longueur des anciens circuits. Chaque circuit propose **deux routes à une bifurcation**, puis une jonction commune, en plus de son raccourci étroit :
+
+| Circuit              | Longueur principale | Route alternative                     |
+| -------------------- | ------------------: | ------------------------------------- |
+| Prairie des lucioles |               969 m | Le verger et ses arbres fruitiers     |
+| Canyon vermeil       |             1 136 m | La corniche et ses rochers stratifiés |
+| Archipel azur        |             1 000 m | La palmeraie                          |
+| Col des flocons      |             1 119 m | Le village aux chalets enneigés       |
+| Boulevard des bibous |             1 188 m | Les petites rues et leurs maisons     |
+
+La route alternative est presque aussi large que la piste principale : ce n'est pas un raccourci caché. Elle est un peu plus longue et offre deux cadeaux supplémentaires ; rester sur le circuit principal privilégie le temps de parcours. Des panneaux bleu-vert annoncent ce choix, les panneaux violets indiquent le raccourci technique. La mini-carte montre les routes normales en trait plein et le raccourci en pointillés. Les bots varient leur choix selon le pilote et le tour, sans changer de décision au milieu d'une bifurcation. Le mode enfant laisse emprunter toutes ces routes.
 
 ### Mode enfant
 
@@ -107,6 +121,7 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/track.ts`                                    | Relief, projection des routes, raccourcis et mouvement déterministe des obstacles |
 | `src/scenery.ts`                                  | Décors propres à chaque univers et modèles des obstacles                          |
 | `src/minimap.ts` / `src/animation.ts`             | Carte du circuit et articulation des karts/pilotes                                |
+| `src/routeSigns.ts`                               | Panneaux d'annonce des embranchements et raccourcis                               |
 | `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor            |
 | `src/art.ts` / `src/meadow.ts`                    | Matériaux, textures procédurales, budget d'ombres et composition de la Prairie    |
 | `src/biomes.ts` / `src/rosterDetails.ts`          | Ambiances et décors des autres circuits, finitions des huit pilotes et karts      |
@@ -120,11 +135,11 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/storage.ts`                                  | Dernières sélections ; tolérance au stockage indisponible                         |
 | `src/style.css`                                   | Interface française adaptative et commandes tactiles                              |
 
-Un état de simulation commun est rendu depuis une caméra par humain. La piste et la trajectoire IA dérivent d'une spline fermée, échantillonnée pour les contacts et la progression. Les collisions sont volontairement arcade : pas de drift ou de routes superposées. Les bosses déclenchent un saut à partir de 14 m/s : impulsion, gravité, direction réduite en l'air puis atterrissage amorti. L'ombre reste au sol. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
+Un état de simulation commun est rendu depuis une caméra par humain. La route principale dérive d'une spline fermée ; les branches possèdent leur propre courbe, largeur, longueur et intervalle de progression commun. Contacts, maillages, terrain, décors et mini-carte utilisent la même liste de routes. Les jonctions sont l'union des surfaces asphaltées, y compris pour l'assistance enfant. Les collisions sont volontairement arcade : pas de drift ou de routes superposées. Les bosses déclenchent un saut à partir de 14 m/s : impulsion, gravité, direction réduite en l'air puis atterrissage amorti. L'ombre reste au sol. Les checkpoints doivent être franchis dans l'ordre ; une téléportation ne donne pas de tour gratuit.
 
 La graine d'attribution des objets est déterministe. Les bots utilisent les mêmes limites physiques, collisions et règles d'objets que les humains. La difficulté change leur vitesse visée (70 %, 89 %, 100 % de la vitesse du kart), l'anticipation, la fréquence d'utilisation des objets et la prise des raccourcis, sans sur-vitesse cachée ou rattrapage artificiel. Le solo reste une course, pas un mode contre-la-montre.
 
-Les panneaux jaunes annoncent les obstacles mobiles : un contact ralentit brièvement et peut être bloqué par un bouclier. Les raccourcis sont des routes secondaires asphaltées, sans piquets ni portiques, et figurent en pointillés clairs sur la carte ; ils sont moins larges et leurs bas-côtés ralentissent fortement. Le jaune au sol est réservé aux bandes turbo. Les checkpoints restent ordonnés, même en passant par une branche. Un kart repositionné revient sur sa route sans gagner de progression.
+Les panneaux jaunes annoncent les obstacles mobiles : un contact ralentit brièvement et peut être bloqué par un bouclier. Les raccourcis sont des routes secondaires asphaltées, sans piquets ni portiques, et figurent en pointillés clairs sur la carte ; ils sont moins larges. Hors route, sur tous les parcours, la vitesse maximale est divisée par deux, sans pénalité cumulative au bord ; retrouver l'asphalte permet de réaccélérer normalement. Le jaune au sol est réservé aux bandes turbo. Les checkpoints restent ordonnés, même en passant par une branche. Un kart repositionné revient sur sa route sans gagner de progression.
 
 Les réglages et sélections sont sauvegardés localement, sans données envoyées à un serveur. Les contrôleurs sont réattribués par session car leur indice matériel n'est pas une identité stable. Le jeu continue si le stockage est bloqué.
 
@@ -140,7 +155,7 @@ Les réglages et sélections sont sauvegardés localement, sans données envoyé
 
 ## Vérifications de livraison
 
-Les commandes ci-dessus sont reproductibles. Voir [`docs/EVOLUTIONS.md`](docs/EVOLUTIONS.md) pour les validations des trois derniers lots, et [`docs/VALIDATION.md`](docs/VALIDATION.md) pour l'historique et les limites matérielles.
+Les commandes ci-dessus sont reproductibles. Voir [`docs/EVOLUTIONS.md`](docs/EVOLUTIONS.md) pour les dernières évolutions et leurs validations, et [`docs/VALIDATION.md`](docs/VALIDATION.md) pour l'historique et les limites matérielles.
 
 Les interfaces de test `window.__bibou` existent **uniquement en développement**. Elles sont supprimées du build de production, ce que le test statique vérifie.
 
