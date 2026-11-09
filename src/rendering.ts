@@ -4,7 +4,7 @@ import { characters, karts, trackDefinitions } from './config';
 import { Race, Track } from './race';
 import { RaceEffects } from './effects';
 import { createHazardModel, updateHazardModel } from './itemModels';
-import { animateKart, react, type KartRig } from './animation';
+import { animateKart, HIT_DURATION, react, type KartRig } from './animation';
 import { scenery, obstacleModel } from './scenery';
 import { createTerrainGeometry } from './terrain';
 import { createRoadGeometry } from './road';
@@ -340,6 +340,7 @@ export function makeKart(character: number, kart: number, id: number) {
     wheelAngle: 0,
     reaction: null,
     age: 0,
+    hitAge: HIT_DURATION,
   } satisfies KartRig;
   return group;
 }
@@ -824,10 +825,20 @@ export class Renderer {
           r.roll,
           'YXZ',
         );
-        animateKart(g.userData.rig, effectsDt, r.speed, r.steering, this.reduced, r.braking);
+        const impact = animateKart(
+          g.userData.rig,
+          effectsDt,
+          r.speed,
+          r.steering,
+          this.reduced,
+          r.braking,
+        );
+        g.rotation.y += impact.yaw;
+        g.rotation.z += impact.roll;
+        g.position.y += impact.lift;
         this.shieldMeshes[r.id].visible = r.shield > 0;
         this.shieldMeshes[r.id].rotation.y = this.reduced ? 0 : this.time * 0.5;
-        g.visible = this.reduced || r.immune <= 0 || Math.sin(this.time * 24) > -0.35;
+        g.visible = true;
         g.scale.setScalar(r.giantScale * (r.shield > 0 ? 1.04 : 1));
         if (!this.reduced && r.giant > 0 && r.giant < 1.5)
           g.scale.multiplyScalar(1 + Math.sin(this.time * 12) * 0.025);

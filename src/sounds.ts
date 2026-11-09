@@ -36,7 +36,12 @@ export function soundEffect(
     noise(context, output, buffer, time, 0.4, 0.2, 1200, 100, 'lowpass');
   } else if (sound === 'splash') {
     noise(context, output, buffer, time, 0.25, 0.16, 650, 180, 'lowpass');
-  } else if (sound === 'hit' || sound === 'explosion') {
+  } else if (sound === 'hit') {
+    // A short, playful tyre skid follows the full turn, without a harsh explosion.
+    noise(context, output, buffer, time, 0.55, 0.09, 1800, 450);
+    tone(context, output, 620, time, 0.55, 0.075, 'triangle', 180);
+    tone(context, output, 320, time + 0.12, 0.38, 0.045, 'sine', 110);
+  } else if (sound === 'explosion') {
     noise(context, output, buffer, time, 0.19, 0.22, 850, 180, 'lowpass');
     tone(context, output, 140, time, 0.22, 0.24, 'sine', 32);
   } else if (sound === 'jump') {

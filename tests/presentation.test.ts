@@ -1,10 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import { Track, Race, idleInput } from '../src/race';
 import { mapProjection, minimapMarkup } from '../src/minimap';
-import { animateKart, react, type KartRig } from '../src/animation';
+import { animateKart, HIT_DURATION, react, type KartRig } from '../src/animation';
 import { makeKart } from '../src/rendering';
 import * as THREE from 'three';
 describe('race presentation', () => {
+  it('spins through one full turn with a bounce, independently of pickup reactions', () => {
+    const rig = makeKart(0, 0, 0).userData.rig as KartRig;
+    expect(animateKart(rig, 0, 0, 0, false)).toEqual({ yaw: 0, lift: 0, roll: 0 });
+    react(rig, 'hit');
+    const first = animateKart(rig, HIT_DURATION / 4, 0, 0, false);
+    react(rig, 'pickup');
+    const middle = animateKart(rig, HIT_DURATION / 4, 0, 0, false);
+    expect(first.yaw).toBeGreaterThan(0);
+    expect(middle.yaw).toBeCloseTo(Math.PI);
+    expect(middle.lift).toBeCloseTo(0.3);
+    const last = animateKart(rig, HIT_DURATION / 2 - 0.001, 0, 0, false);
+    expect(last.yaw).toBeGreaterThan(Math.PI * 1.99);
+    expect(animateKart(rig, 0.001, 0, 0, false)).toEqual({ yaw: 0, lift: 0, roll: 0 });
+  });
+  it('suppresses the spin and bounce in reduced motion and consumes their timer', () => {
+    const rig = makeKart(0, 0, 0).userData.rig as KartRig;
+    react(rig, 'hit');
+    expect(animateKart(rig, HIT_DURATION, 10, 1, true)).toEqual({ yaw: 0, lift: 0, roll: 0 });
+    expect(animateKart(rig, 0, 10, 1, false)).toEqual({ yaw: 0, lift: 0, roll: 0 });
+  });
   it.each([0, 1, 2])('maps circuit %i inside the HUD and numbers all racers', (index) => {
     const track = new Track(index),
       project = mapProjection(track);

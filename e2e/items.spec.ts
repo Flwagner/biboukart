@@ -6,7 +6,7 @@ test('new power and splash sounds render finite, non-clipping audio', async ({ p
     const { soundEffect } = await import('/src/sounds.ts');
     const { makeNoise } = await import('/src/synth.ts');
     const results = [];
-    for (const sound of ['giant', 'shockwave', 'shockwaveImpact', 'splash']) {
+    for (const sound of ['giant', 'shockwave', 'shockwaveImpact', 'splash', 'hit']) {
       const context = new OfflineAudioContext(1, 22050, 22050);
       soundEffect(context, context.destination, makeNoise(context), sound, 0);
       const buffer = await context.startRendering();
@@ -26,6 +26,46 @@ test('new power and splash sounds render finite, non-clipping audio', async ({ p
     expect(level.peak).toBeGreaterThan(0.01);
     expect(level.peak).toBeLessThan(1);
   }
+});
+
+test('a hit spins the visible kart without rotating its physics heading or camera', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.locator('#play').click();
+  const result = await page.evaluate(() => {
+    window.__bibou.start(1, 0);
+    document.querySelector<HTMLButtonElement>('#pause')!.click();
+    const { race, renderer } = window.__bibou;
+    const r = race.racers[0];
+    const heading = r.heading;
+    const position = r.pos.clone();
+    race.hit(r);
+    renderer.render(0, 1, 0.425);
+    const model = renderer.kartMeshes[0];
+    const middle = {
+      yaw: model.rotation.y - heading,
+      lift: model.position.y - r.pos.y,
+      visible: model.visible,
+    };
+    renderer.render(0, 1, 0.425);
+    return {
+      middle,
+      end: {
+        yaw: model.rotation.y - heading,
+        lift: model.position.y - r.pos.y,
+        visible: model.visible,
+      },
+      headingUnchanged: r.heading === heading,
+      positionUnchanged: r.pos.equals(position),
+    };
+  });
+  expect(result.middle.yaw).toBeCloseTo(Math.PI);
+  expect(result.middle.lift).toBeCloseTo(0.3);
+  expect(result.middle.visible).toBe(true);
+  expect(result.end).toEqual({ yaw: 0, lift: 0, visible: true });
+  expect(result.headingUnchanged).toBe(true);
+  expect(result.positionUnchanged).toBe(true);
 });
 
 test('missile and oil puddle are visible ahead of the kart', async ({ page }) => {
