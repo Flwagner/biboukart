@@ -108,9 +108,7 @@ test('controller-only garage, race, pause, controller dialog, results and rematc
   expect(errors).toEqual([]);
 });
 
-test('controller-only settings, volume sliders, checkboxes, mapping and cancellation', async ({
-  page,
-}) => {
+test('controller-only settings, volume sliders, mapping and cancellation', async ({ page }) => {
   await choose(page, '#settings');
   for (const selector of ['#volume', '#music-volume', '#effects-volume']) {
     await go(page, selector);
@@ -121,8 +119,7 @@ test('controller-only settings, volume sliders, checkboxes, mapping and cancella
   await go(page, '#quality');
   await tap(page, 14);
   await expect(page.locator('#quality')).toHaveValue('high');
-  await choose(page, '#reduced');
-  await expect(page.locator('#reduced')).toBeChecked();
+  await expect(page.locator('#reduced')).toHaveCount(0);
   await choose(page, '[data-bind="0:0"]');
   await tap(page, 1);
   await expect(page.locator('#remap-status')).toBeEmpty();
@@ -150,7 +147,7 @@ test('controller-only settings, volume sliders, checkboxes, mapping and cancella
   await choose(page, '#settings');
   await expect(page.locator('#volume')).toHaveValue('0.25');
   await expect(page.locator('#quality')).toHaveValue('high');
-  await expect(page.locator('#reduced')).toBeChecked();
+  await expect(page.locator('#reduced')).toHaveCount(0);
 });
 
 test('any connected pad can navigate, configure split-screen and recover a disconnect', async ({

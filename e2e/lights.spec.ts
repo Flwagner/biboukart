@@ -28,7 +28,7 @@ test('braking illuminates only the current kart rear lights and releases to dim 
   await page.keyboard.down('ArrowDown');
   await expect.poll(() => color(1)).toBe('ff5148');
   expect(await color(0)).toBe('842833');
-  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+  await page.evaluate(() => window.__bibou.renderer.setQuality('low'));
   await expect.poll(() => color(1)).toBe('ff5148');
   const wheel = await page.evaluate(() => {
     const mesh = window.__bibou.renderer.kartMeshes[0].userData.rig.steering;

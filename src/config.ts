@@ -221,7 +221,6 @@ export interface Settings {
   effectsVolume: number;
   difficulty: Difficulty;
   quality: string;
-  reduced: boolean;
   bindings: string[][];
   padBindings: PadControl[][][];
 }
@@ -278,7 +277,6 @@ export function loadSettings(): Settings {
         typeof s.effectsVolume === 'number' ? Math.max(0, Math.min(1, s.effectsVolume)) : 0.8,
       difficulty: ['easy', 'normal', 'hard'].includes(s.difficulty) ? s.difficulty : 'normal',
       quality: ['auto', 'low', 'medium', 'high'].includes(s.quality) ? s.quality : 'auto',
-      reduced: !!s.reduced,
       padBindings: validPadBindings(s.padBindings) ? s.padBindings : freshPadBindings(),
       bindings:
         Array.isArray(s.bindings) &&
@@ -299,7 +297,6 @@ export function loadSettings(): Settings {
       effectsVolume: 0.8,
       difficulty: 'normal',
       quality: 'auto',
-      reduced: false,
       padBindings: freshPadBindings(),
       bindings: defaultBindings.map((b) => [...b]),
     };

@@ -14,6 +14,7 @@ export interface KartRig {
   reaction: Reaction | null;
   age: number;
   hitAge: number;
+  seenImpacts?: number;
 }
 export function react(rig: KartRig, kind: string) {
   if (kind === 'hit') rig.hitAge = 0;
@@ -29,7 +30,13 @@ export function animateKart(
   steer: number,
   reduced: boolean,
   brake = 0,
+  impacts?: number,
 ) {
+  // Essential impact feedback must not depend on a UI/audio event subscriber.
+  if (impacts !== undefined && impacts !== rig.seenImpacts) {
+    if (impacts > (rig.seenImpacts ?? 0)) react(rig, 'hit');
+    rig.seenImpacts = impacts;
+  }
   rig.rearLightMaterial.color.copy(brake > 0.05 ? brakeBright : brakeIdle);
   rig.age += dt;
   rig.hitAge = Math.min(HIT_DURATION, rig.hitAge + dt);

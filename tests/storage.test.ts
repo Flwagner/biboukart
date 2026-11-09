@@ -4,6 +4,21 @@ import { loadSelection, saveSelection } from '../src/storage';
 import { freshPadBindings } from '../src/gamepad';
 afterEach(() => vi.unstubAllGlobals());
 describe('resilient local settings', () => {
+  it('ignores and drops the obsolete reduced-animation preference without losing other settings', () => {
+    let stored = JSON.stringify({ reduced: true, volume: 0.7, quality: 'low' });
+    vi.stubGlobal('localStorage', {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    });
+    const settings = loadSettings();
+    expect(settings).not.toHaveProperty('reduced');
+    expect(settings).toMatchObject({ volume: 0.7, quality: 'low' });
+    saveSettings(settings);
+    expect(JSON.parse(stored)).not.toHaveProperty('reduced');
+    expect(loadSettings()).toEqual(settings);
+  });
   it('migrates old settings and persists independent gamepad bindings', () => {
     let stored = '{}';
     vi.stubGlobal('localStorage', {

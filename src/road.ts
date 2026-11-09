@@ -107,6 +107,9 @@ export function createRoadGeometry(track: Track) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const uv: number[] = [];
+  for (let i = 0; i < vertices.length; i += 3) uv.push(vertices[i] / 6, vertices[i + 2] / 6);
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geometry.computeVertexNormals();
   return geometry;
 }

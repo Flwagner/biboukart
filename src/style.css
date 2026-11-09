@@ -1066,9 +1066,6 @@ body:has(.gamepad-hints:not([hidden])) .menu-shell {
     transform: scale(1);
   }
 }
-.reduced-effects .item-slot {
-  animation: none;
-}
 @media (prefers-reduced-motion: reduce) {
   .collecting .item-slot {
     animation: none;

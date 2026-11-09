@@ -49,11 +49,13 @@ export class RaceEffects {
 
     const flame = new THREE.ConeGeometry(0.34, 2.8, 5);
     const amber = new THREE.MeshBasicMaterial({
-      color: '#ffc45c',
+      color: '#ff8b26',
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.92,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      // A solid orange envelope remains visible on sunlit asphalt after tone mapping.
+      blending: THREE.NormalBlending,
+      toneMapped: false,
     });
     const white = new THREE.MeshBasicMaterial({
       color: '#fff5c1',
@@ -61,6 +63,7 @@ export class RaceEffects {
       opacity: 0.95,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      toneMapped: false,
     });
     const ringGeometry = new THREE.RingGeometry(1.6, 1.78, 32);
     for (let i = 0; i < count; i++) {
@@ -71,6 +74,7 @@ export class RaceEffects {
         outer.position.set(x, 0.65, -2.6);
         trail.add(outer);
         const core = new THREE.Mesh(flame, white);
+        core.renderOrder = 1;
         core.rotation.x = -Math.PI / 2;
         core.position.set(x, 0.65, -2.05);
         core.scale.set(0.55, 0.65, 0.55);

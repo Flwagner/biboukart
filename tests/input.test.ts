@@ -8,7 +8,6 @@ const settings = () => ({
   effectsVolume: 0.8,
   difficulty: 'normal' as const,
   quality: 'auto',
-  reduced: false,
   bindings: defaultBindings.map((b) => [...b]),
   padBindings: freshPadBindings(),
 });

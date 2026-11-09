@@ -43,7 +43,7 @@ try {
     '<section class="panel error"><h1>Un petit souci de moteur…</h1><p>BibouKart nécessite WebGL2. Activez l’accélération graphique ou essayez un navigateur récent.</p></section>';
   throw error;
 }
-renderer.setQuality(settings.quality, settings.reduced);
+renderer.setQuality(settings.quality);
 const mobile = () => matchMedia('(pointer: coarse)').matches;
 let screen = 'home',
   playerCount = 1,
@@ -254,7 +254,7 @@ function options() {
       )
       .join(
         '',
-      )}</select></label><label class="check"><input type="checkbox" id="reduced" ${settings.reduced ? 'checked' : ''}> Réduire les animations</label></div><h2>Un clavier à votre façon</h2><p>Cliquez une touche, puis appuyez sur la nouvelle touche physique (AZERTY / QWERTY).</p><div class="binding-grid">${settings.bindings.map((b, i) => `<div><strong>Joueur ${i + 1}</strong>${b.map((code, j) => `<button data-bind="${i}:${j}"><small>${['Accélérer', 'Freiner', 'Gauche', 'Droite', 'Objet'][j]}</small><span>${keyLabel(code)}</span></button>`).join('')}</div>`).join('')}</div><p id="remap-status" role="status"></p>${button('Enregistrer et revenir', 'back', 'primary')}</section>`,
+      )}</select></label></div><h2>Un clavier à votre façon</h2><p>Cliquez une touche, puis appuyez sur la nouvelle touche physique (AZERTY / QWERTY).</p><div class="binding-grid">${settings.bindings.map((b, i) => `<div><strong>Joueur ${i + 1}</strong>${b.map((code, j) => `<button data-bind="${i}:${j}"><small>${['Accélérer', 'Freiner', 'Gauche', 'Droite', 'Objet'][j]}</small><span>${keyLabel(code)}</span></button>`).join('')}</div>`).join('')}</div><p id="remap-status" role="status"></p>${button('Enregistrer et revenir', 'back', 'primary')}</section>`,
   );
   common();
   $('#volume').oninput = (e) => {
@@ -271,11 +271,7 @@ function options() {
   };
   $('#quality').onchange = (e) => {
     settings.quality = (e.target as HTMLSelectElement).value;
-    renderer.setQuality(settings.quality, settings.reduced);
-  };
-  $('#reduced').onchange = (e) => {
-    settings.reduced = (e.target as HTMLInputElement).checked;
-    renderer.setQuality(settings.quality, settings.reduced);
+    renderer.setQuality(settings.quality);
   };
   $('#back').insertAdjacentHTML(
     'beforebegin',
@@ -472,9 +468,8 @@ function updateHUD() {
             : race.elapsed < 1
               ? 'GO !'
               : '';
-    el.classList.toggle('boosting', r.boost > 0 && !settings.reduced);
+    el.classList.toggle('boosting', r.boost > 0);
     el.classList.toggle('collecting', renderer.effects?.isCollecting(i) ?? false);
-    el.classList.toggle('reduced-effects', settings.reduced);
   }
   const clock = hud.querySelector('#race-clock');
   if (clock)

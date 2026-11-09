@@ -31,7 +31,7 @@ for (const [index, name] of [
         )
         .not.toBe(before);
       await page.evaluate(() => {
-        window.__bibou.renderer.reduced = true;
+        window.__bibou.renderer.setQuality('low');
       });
       const still = await page.evaluate(() =>
         window.__bibou.renderer.snowfall.geometry.getAttribute('position').getY(0),
@@ -41,7 +41,7 @@ for (const [index, name] of [
         await page.evaluate(() =>
           window.__bibou.renderer.snowfall.geometry.getAttribute('position').getY(0),
         ),
-      ).toBe(still);
+      ).not.toBe(still);
     }
     await page.screenshot({ path: `test-results/destination-${index}-race.png` });
     await page.reload();

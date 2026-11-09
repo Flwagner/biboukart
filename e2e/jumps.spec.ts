@@ -49,7 +49,7 @@ for (const index of [0, 1, 2])
       path: `test-results/jump-${index}.png`,
       style: '#app { visibility: hidden; }',
     });
-    await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+    await page.evaluate(() => window.__bibou.renderer.setQuality('low'));
     expect(await page.evaluate(() => window.__bibou.race.racers[0].airborne)).toBe(true);
     await page.locator('#resume').click();
     const landing = await page.evaluate(() => {

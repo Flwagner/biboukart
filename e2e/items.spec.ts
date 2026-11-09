@@ -179,9 +179,14 @@ test('new gifts render, land and recover correctly in split screen', async ({ pa
     path: 'test-results/items-shockwave.png',
     style: '#app { visibility: hidden; }',
   });
-  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
-  await expect
-    .poll(() => page.evaluate(() => window.__bibou.renderer.effects.karts[1].dust.visible))
-    .toBe(false);
+  expect(
+    await page.evaluate(() => {
+      const { race, renderer } = window.__bibou;
+      renderer.setQuality('low');
+      race.racers[1].shockPulse = 0.5;
+      renderer.render(0, 1, 0);
+      return renderer.effects.karts[1].dust.visible;
+    }),
+  ).toBe(true);
   expect(errors).toEqual([]);
 });

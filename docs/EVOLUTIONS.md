@@ -1,5 +1,51 @@
 # Évolutions : trois lots autonomes
 
+## Généralisation graphique — tous les circuits, pilotes et karts
+
+- La Prairie, Roxy et Comète restent les références approuvées. Les quatre autres circuits ont des profils de lumière dédiés ; le podium retrouve systématiquement son éclairage de présentation, même après un circuit enneigé ou urbain.
+- Canyon : arches et piliers stratifiés, cactus arrondis, jardins désertiques, falaises à plusieurs couches et légère poussière animée. Archipel : mer texturée animée, liserés de sable et d'écume autour de l'île existante, troncs courbes, palmes effilées, noix de coco, cabanes détaillées et jardins tropicaux avec parasols.
+- Col : sapins aux couronnes profilées, roches et bancs enneigés, chalets à charpente apparente et fenêtres lumineuses, fumée des cheminées, sommets irréguliers et calottes découpées dans la même silhouette. Boulevard : vitrines, corniches, balcons, auvents rayés, fenêtres lumineuses, façades d'arrière-plan, bancs, plantations et signalétique.
+- Sept autres pilotes : pattes posées au volant, foulards, museaux/joues et détails spécifiques à chaque animal. Panda avec masque et pupilles, grenouille sans les anciens yeux doublons, lapin noir et chat blanc conservés. Sept autres karts : carrosseries et finitions propres à chaque silhouette, pontons/aéro, évents, garde-boue, suspensions, chrome et détails de réacteurs. Aucun changement aux indices sauvegardés, caractéristiques, routes, collisions ou IA.
+- Décor statique regroupé par matériau ; seuls l'eau, la poussière et la fumée restent dans un groupe animé séparé. Matériaux diffus pour les grands décors, matériaux satinés/métalliques pour les véhicules, pas de nouvelles lumières ponctuelles par fenêtre. Nettoyage des textures et géométries entre circuits, animation de l'ambiance figée en pause, ombres et résolution toujours adaptées au nombre de vues et à la qualité.
+- Contrôles : géométries des 64 combinaisons pilote/kart couvertes par les tests existants ; nouveaux contrôles des rayons d'encombrement sur les deux routes, profils lumineux, eau et fumée, palmes et montagnes, sculpts propres à chaque modèle. Le test historique de dégagement des bâtiments examine toujours tous ses points de route, avec des positions précalculées pour éviter des assertions répétées coûteuses.
+- Captures : `test-results/circuit-art-{1,2,3,4}-{solo,four}.png`, `test-results/roster-art-{0-1-2,3-4-5,6-7-0}.png` et `test-results/circuit-art-city-mobile.png`. Elles sont produites avec le vrai moteur, pas des images de concept.
+- Validation : **231 tests unitaires et 21 scénarios navigateur ciblés réussis**, comprenant chaque nouveau circuit en solo haute qualité et à quatre vues basse qualité, les huit couples de présentation, deux joueurs tactiles en ville, les contrôles clavier/manette, les sauvegardes, le podium, le 360° et les flammes turbo. Build TypeScript/Vite validé. Deux cycles identiques Canyon/Archipel/Col/Boulevard rendent exactement les mêmes ressources : **134/136/119/147 géométries** et **4/5/4/4 textures**, sans croissance dans ce scénario.
+
+Limites : modèles et textures restent procéduraux, sans nouveaux assets externes ni dépendance. Les tests logiciels/émulation mobile ne constituent pas une certification de fluidité sur GPU ou téléphone physique.
+
+## Refonte graphique — premier lot « jouets de collection »
+
+### Suppression de l'option de réduction des animations
+
+- Option retirée des réglages et des préférences du jeu. L'ancienne valeur `reduced: true` est ignorée au chargement, sans réinitialiser les volumes, contrôles ou choix de qualité ; elle disparaît lors de la prochaine sauvegarde des réglages.
+- Animations du kart, 360° d'impact, flammes turbo, particules, décors, neige et podium actifs quelle que soit la qualité graphique. La pause continue de figer les effets de course. Les préférences CSS du système pour les transitions de menus restent indépendantes.
+- Tests de migration de sauvegarde et scénario navigateur avec une ancienne préférence activée : absence de la case, conservation des autres réglages, 360° et flammes visibles même en qualité basse. Les scénarios de menus et d'effets ne proposent plus l'ancienne option.
+- Validation : **215 tests unitaires**, **5 scénarios navigateur ciblés** (ancienne sauvegarde, réglages persistants, turbo, podium et réglages à la manette), build TypeScript/Vite réussis.
+
+Les mentions d'animations réduites ci-dessous décrivent l'historique antérieur à cette suppression.
+
+### Correctifs de retour visuel
+
+- Déclenchement du 360° sécurisé par un compteur des impacts réellement acceptés dans la simulation : missile, flaque et obstacle ne dépendent plus uniquement du relais d'événements interface/audio. Le kart tourne, pas sa direction physique ni sa caméra ; aucun redéclenchement sur un impact bloqué par bouclier ou immunité.
+- Flammes turbo : enveloppe orange en transparence normale et cœur lumineux dessiné au-dessus, tous deux exclus du tone mapping ACES pour rester visibles sur une route éclairée. Extinction à la fin du turbo et variante discrète du mode animations réduites conservées.
+- Validation : **214 tests unitaires** et deux scénarios navigateur ciblés réussis ; contrôle du vrai transform du kart jusqu'à 360°, même sans abonné aux événements, et capture `test-results/restored-turbo-flames.png`.
+
+### Contenu du premier lot
+
+- Éclairage soleil chaud/ciel froid, tone mapping ACES, léger suréchantillonnage adaptatif plutôt qu'un MSAA permanent, ciel dégradé local et ombres douces. Un seul calcul des ombres par image, partagé entre les vues ; cartes 1 024 px par défaut, 2 048 px en qualité haute, désactivées en basse qualité et à trois/quatre joueurs. Sur appareil tactile ou GPU logiciel détecté, les ombres projetées demandent le choix explicite de la qualité haute. Les ombres de contact estompées restent disponibles partout.
+- Matériaux standard sur les véhicules avec peinture satinée, caoutchouc mat et métal ; modèles arrondis, jantes, échappements et châssis. Terrain et végétation conservent des matériaux diffus plus légers, et les formes arrondies sont réservées aux véhicules. Comète reçoit une carrosserie dédiée, Roxy un museau, des joues crème, des intérieurs d'oreille et une queue bicolore. Animations, feux stop et identités sauvegardées préservés.
+- Prairie pilote : arbres arrondis aux couleurs variées, collines plus douces, fleurs et buissons groupés hors des deux routes, nuages. Grain d'asphalte et variations subtiles du terrain, sans modifier le relief physique. Portique de départ avec enseigne originale générée localement.
+- Caméra reculée et visée rapprochée pour mieux cadrer le kart. Aucun changement aux règles de course, collisions, IA ou contrôles.
+- Textures générées localement, sans téléchargement, modèle tiers ni nouvelle dépendance. Nettoyage des textures propres au monde entre circuits ; texture d'ombre de contact partagée.
+
+Les tests `tests/art.test.ts` couvrent les finitions, textures déterministes, budgets d'ombre et de résolution, dégagement des routes et conservation des ombres après regroupement des géométries. `e2e/art.spec.ts` contrôle les qualités haute/basse, quatre vues, une seule passe d'ombres en duo et la stabilité du nombre de textures GPU ; captures locales dans `test-results/art-prairie-{high,low,four}.png`.
+
+Validation : **210 tests unitaires et 13 scénarios navigateur ciblés réussis**, comprenant commandes clavier/manette/tactile, quatre vues, effets, podium et feux stop. Après correction de l'invalidation des shaders au changement de mode d'ombres, les cinq scénarios art/feux ont été rejoués avec succès. Textures GPU sur six reconstructions : **4, 4, 4, 4, 4, 4**. Build et test statique sous `/biboukart/` validés. Formatage des fichiers modifiés validé ; le contrôle global signale un écart préexistant dans `e2e/fullscreen.spec.ts`, laissé inchangé.
+
+Mesure indicative après optimisation : Chromium 156, SwiftShader, 1 280 × 800, commande `npm run benchmark` : **1,8 / 2,6 / 0,7 fps** pour 1 / 2 / 4 joueurs. Une copie du HEAD initial, mesurée dans le même environnement, donne **4,8 / 2,1 / 1,9 fps**. L'échantillon de trois secondes et le très faible nombre d'images rendent ces chiffres instables ; ils montrent surtout que le rendu logiciel reste insuffisant, et ne permettent pas d'annoncer 30/60 fps sur GPU matériel. Les ombres projetées restent accessibles explicitement en qualité haute, mais sont évitées par défaut sur SwiftShader/llvmpipe/lavapipe.
+
+Périmètre historique : ce premier lot concernait la Prairie ; la généralisation aux autres univers et au garage est décrite plus haut. Les modèles restent procéduraux, sans assets Blender/GLB. Les objectifs de fluidité doivent toujours être vérifiés sur GPU et téléphones réels.
+
 ## Nouveaux cadeaux — Géant et onde de choc
 
 - Six objets dans les cadeaux pour les humains comme pour les bots. Les libellés, icônes et le guide du pilote présentent aussi le géant et l'onde de choc ; le piège est désormais nommé « Flaque ».

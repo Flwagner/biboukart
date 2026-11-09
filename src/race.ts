@@ -58,6 +58,7 @@ export interface Racer {
   knockedTime: number;
   immune: number;
   slow: number;
+  impacts: number;
   itemCooldown: number;
   stuck: number;
   assistedStuck: number;
@@ -140,6 +141,7 @@ export class Race {
         giant: 0,
         giantScale: 1,
         stun: 0,
+        impacts: 0,
         shockPending: false,
         shockPulse: 0,
         shockOrigin: p.clone(),
@@ -283,6 +285,7 @@ export class Race {
     r.slow = 1.3;
     r.speed *= 0.45;
     r.immune = 2.2;
+    r.impacts++;
     this.onEvent('hit', r.id);
     return true;
   }

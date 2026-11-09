@@ -1,12 +1,13 @@
 # BibouKart 🏁
 
-Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three.js + TypeScript + Vite**, sans backend, sans compte, sans installation pour les joueurs.
+Un jeu de karting 3D stylisé original, entièrement dans le navigateur. **Three.js + TypeScript + Vite**, sans backend, sans compte, sans installation pour les joueurs.
 
 ## Jouer
 
 - **PC : 1 à 4 humains** sur un même appareil, clavier partagé et/ou manettes.
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
 - 8 personnages et 8 karts aux silhouettes et caractéristiques différentes.
+- Direction artistique « jouets de collection » sur les cinq circuits, huit pilotes et huit karts : carrosseries sculptées, peinture satinée, pneus mats, métal et visages expressifs. Prairie conservée comme référence ; Canyon stratifié, Archipel à eau animée et palmiers courbes, Col aux chalets fumants et sommets sculptés, Boulevard aux vitrines, balcons et jardins urbains. Chaque univers possède sa propre ambiance lumineuse.
 - 5 circuits : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons (montagnes enneigées, sapins, chalets et neige animée) et Boulevard des bibous (immeubles, vitrines, lampadaires et feux). Chacun propose du relief, un raccourci et un obstacle mobile.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
 - Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
@@ -15,8 +16,8 @@ Un jeu de karting 3D low-poly original, entièrement dans le navigateur. **Three
 - Boîtes cadeaux : missile guidé, turbo, bouclier, flaque, mode géant et onde de choc. Bandes de turbo sur la route.
 - Géant : taille doublée pendant 7 secondes, résistance aux obstacles de la route et projection des adversaires sur les bas-côtés, suivie d'un retour en piste sans gain de progression. Les autres objets restent efficaces ; les boucliers absorbent les projections et deux géants se repoussent normalement.
 - Onde de choc : saut même à l'arrêt, puis impact à l'atterrissage qui assomme les rivaux à moins de 8 mètres pendant 1,5 seconde. En l'air, l'objet arme le prochain atterrissage. Le bouclier absorbe l'attaque et l'immunité temporaire empêche les assommages en chaîne.
-- Missile à ogive et ailerons, réacteur lumineux, traînée et explosion ; flaque sombre aux contours irréguliers, reflets colorés et éclaboussures. Anneau d'onde de choc, poussière et étoiles d'assommage, avec une variante à animations réduites.
-- Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Variante discrète avec les animations réduites.
+- Missile à ogive et ailerons, réacteur lumineux, traînée et explosion ; flaque sombre aux contours irréguliers, reflets colorés et éclaboussures. Anneau d'onde de choc, poussière et étoiles d'assommage.
+- Turbos : jets lumineux et léger élargissement de la vue ; cadeaux : gerbe d'étoiles, anneau doré et mise en valeur de l'objet reçu. Les animations de jeu restent actives à toutes les qualités graphiques ; l'ancienne option « Réduire les animations » est supprimée et sa valeur sauvegardée est ignorée.
 - Musique originale en boucle (8 mesures, 116 BPM), basse, mélodie et percussions ; sons distincts de cadeaux, pouvoirs, collisions, départ et arrivée. Volumes général/musique/effets indépendants.
 - Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
 
@@ -107,7 +108,9 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/scenery.ts`                                  | Décors propres à chaque univers et modèles des obstacles                          |
 | `src/minimap.ts` / `src/animation.ts`             | Carte du circuit et articulation des karts/pilotes                                |
 | `src/rendering.ts`                                | Monde procédural, karts, caméras, unique renderer et viewports/scissor            |
-| `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU   |
+| `src/art.ts` / `src/meadow.ts`                    | Matériaux, textures procédurales, budget d'ombres et composition de la Prairie    |
+| `src/biomes.ts` / `src/rosterDetails.ts`          | Ambiances et décors des autres circuits, finitions des huit pilotes et karts      |
+| `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, particules et nettoyage GPU       |
 | `src/itemModels.ts`                               | Modèles réutilisables de missiles et de flaques                                   |
 | `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                            |
 | `src/gamepad.ts` / `src/menuGamepad.ts`           | Profils de manette, capture des commandes, navigation et focus des menus          |
@@ -128,9 +131,9 @@ Les réglages et sélections sont sauvegardés localement, sans données envoyé
 ## Performance et compatibilité
 
 - Cible : navigateurs récents disposant de **WebGL2**, accélération graphique et JavaScript activés.
-- Géométrie low-poly regroupée par matériau, végétation instanciée, matériaux partagés, ombres simplifiées, réutilisation des effets.
+- Géométrie regroupée par matériau et comportement d'ombre, végétation instanciée, matériaux partagés et réutilisation des effets. Ombres projetées douces en solo/duo, calculées une fois par image pour toutes les vues ; ombres de contact estompées conservées en qualité basse et à 3–4 joueurs.
 - Un seul contexte WebGL, simulation à pas fixe avec rattrapage plafonné, interpolation des positions et HUD actualisé à fréquence limitée.
-- Qualité adaptative : plafonnement du pixel ratio, résolution ajustée avec hystérésis et réduction initiale à 3–4 vues. Réglages basse/moyenne/haute disponibles.
+- Qualité adaptative : pixel ratio plafonné, léger suréchantillonnage en qualité moyenne/haute plutôt qu'un MSAA permanent, résolution ajustée avec hystérésis et réduction initiale à 3–4 vues. Cartes d'ombre de 1 024 px par défaut et 2 048 px en haute qualité, désactivées en basse qualité et à 3–4 vues. Sur appareil tactile ou GPU logiciel détecté, les ombres projetées nécessitent le choix explicite de la qualité haute.
 - Objectifs : 60 fps solo PC et 30 fps en écran partagé/mobile sur matériel adapté, **pas une garantie sur tous les appareils**.
 - Safari iOS, téléphones réels, chauffe prolongée, manettes physiques et limites de clavier restent à confirmer sur ces appareils. L'émulation mobile et les manettes synthétiques ne constituent pas une certification matérielle.
 - Aucun fonctionnement hors-ligne garanti : les fichiers doivent d'abord être chargés depuis l'hébergement. Pas de service worker/PWA.

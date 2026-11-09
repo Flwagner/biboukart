@@ -36,19 +36,27 @@ describe('mountain and city destinations', () => {
       decor = scenery(track);
     expect(decor.group.name).toBe(index === 3 ? 'snow-scenery' : 'city-scenery');
     expect(decor.group.children.length).toBeGreaterThan(60);
+    const corridors = (['main', 'shortcut'] as const).flatMap((route) =>
+      Array.from({ length: 129 }, (_, step) => ({
+        point: track.routeAt(route, step / 128),
+        width: route === 'main' ? track.width : track.shortcut.width,
+        label: `${route} ${step / 128}`,
+      })),
+    );
     for (const child of decor.group.children) {
       const bounds = new THREE.Box3().setFromObject(child);
-      for (const route of ['main', 'shortcut'] as const)
-        for (let step = 0; step <= 128; step++) {
-          const point = track.routeAt(route, step / 128);
-          const width = route === 'main' ? track.width : track.shortcut.width;
-          const dx = Math.max(bounds.min.x - point.x, 0, point.x - bounds.max.x);
-          const dz = Math.max(bounds.min.z - point.z, 0, point.z - bounds.max.z);
-          expect(
-            Math.hypot(dx, dz),
-            `decor ${decor.group.children.indexOf(child)} ${route} ${step / 128}`,
-          ).toBeGreaterThan(width / 2);
+      let gap = Infinity,
+        closest = '';
+      for (const { point, width, label } of corridors) {
+        const dx = Math.max(bounds.min.x - point.x, 0, point.x - bounds.max.x);
+        const dz = Math.max(bounds.min.z - point.z, 0, point.z - bounds.max.z);
+        const clearance = Math.hypot(dx, dz) - width / 2;
+        if (clearance < gap) {
+          gap = clearance;
+          closest = label;
         }
+      }
+      expect(gap, `decor ${decor.group.children.indexOf(child)} ${closest}`).toBeGreaterThan(0);
     }
     expect(obstacleModel(track.createObstacle()).children.length).toBeGreaterThan(0);
   });

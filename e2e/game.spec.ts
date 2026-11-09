@@ -123,12 +123,12 @@ test('settings survive reload and physical keys can be remapped', async ({ page 
   await page.keyboard.press('z');
   await expect(page.locator('[data-bind="0:0"]')).toContainText('Z');
   await page.locator('#quality').selectOption('low');
-  await page.locator('#reduced').check();
+  await expect(page.locator('#reduced')).toHaveCount(0);
   await page.locator('#back').click();
   await page.reload();
   await page.locator('#settings').click();
   await expect(page.locator('#quality')).toHaveValue('low');
-  await expect(page.locator('#reduced')).toBeChecked();
+  await expect(page.locator('#reduced')).toHaveCount(0);
   await expect(page.locator('[data-bind="0:0"]')).toContainText('Z');
 });
 test('synthetic gamepads cannot be assigned to two players', async ({ page }) => {
@@ -204,7 +204,7 @@ test('gamepad throttle, Start pause/resume and disconnect recovery', async ({ pa
   await page.locator('#confirm').click();
   await expect(page.locator('#resume')).not.toBeVisible();
 });
-test('turbo and gift feedback follows actual pickups, expires and respects reduced effects', async ({
+test('turbo and gift feedback follows actual pickups, expires and stays active in low quality', async ({
   page,
 }) => {
   await ready(page);
@@ -252,12 +252,12 @@ test('turbo and gift feedback follows actual pickups, expires and respects reduc
     path: 'test-results/turbo-effect.png',
     style: '#app { visibility: hidden; }',
   });
-  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+  await page.evaluate(() => window.__bibou.renderer.setQuality('low'));
   await expect
     .poll(() => page.evaluate(() => window.__bibou.renderer.effects.karts[0].trail.visible))
-    .toBe(false);
+    .toBe(true);
   expect(await page.evaluate(() => window.__bibou.renderer.effects.karts[0].ring.visible)).toBe(
-    true,
+    false,
   );
   await page.locator('#quit').click();
   expect(await page.evaluate(() => window.__bibou.renderer.effects)).toBeNull();
@@ -304,10 +304,10 @@ test('minimaps, player-specific last lap, animated controls and 3D podium', asyn
     ),
   ).toEqual([0, 1, 2]);
   await page.screenshot({ path: 'test-results/podium.png' });
-  await page.evaluate(() => window.__bibou.renderer.setQuality('low', true));
+  await page.evaluate(() => window.__bibou.renderer.setQuality('low'));
   await expect
     .poll(() => page.evaluate(() => window.__bibou.renderer.podium.models[0].rotation.y))
-    .toBe(0);
+    .not.toBe(0);
 });
 test.describe('mobile landscape', () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
