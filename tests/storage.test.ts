@@ -1,8 +1,46 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { loadSettings, saveSettings, defaultBindings } from '../src/config';
 import { loadSelection, saveSelection } from '../src/storage';
+import { freshPadBindings } from '../src/gamepad';
 afterEach(() => vi.unstubAllGlobals());
 describe('resilient local settings', () => {
+  it('migrates old settings and persists independent gamepad bindings', () => {
+    let stored = '{}';
+    vi.stubGlobal('localStorage', {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => {
+        stored = value;
+      },
+    });
+    const settings = loadSettings();
+    expect(settings.padBindings).toEqual(freshPadBindings());
+    settings.padBindings[0][0] = [{ kind: 'button', index: 4 }];
+    settings.padBindings[1][2] = [{ kind: 'axis', index: 2, direction: -1 }];
+    saveSettings(settings);
+    expect(loadSettings().padBindings).toEqual(settings.padBindings);
+    expect(settings.padBindings[2]).toEqual(freshPadBindings()[2]);
+  });
+  it.each([null, [], 'invalid', [[{ kind: 'button', index: -1 }]]])(
+    'rejects corrupt gamepad profiles: %j',
+    (padBindings) => {
+      vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ padBindings }) });
+      expect(loadSettings().padBindings).toEqual(freshPadBindings());
+    },
+  );
+  it('rejects invalid gamepad control kinds, indices and axis signs', () => {
+    for (const control of [
+      { kind: 'button', index: -1 },
+      { kind: 'button', index: 0.5 },
+      { kind: 'button', index: 64 },
+      { kind: '<img>', index: 1 },
+      { kind: 'axis', index: 0, direction: 0 },
+    ]) {
+      const padBindings: unknown[][][] = freshPadBindings();
+      padBindings[0][0] = [control];
+      vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ padBindings }) });
+      expect(loadSettings().padBindings).toEqual(freshPadBindings());
+    }
+  });
   it('validates saved bot difficulty and migrates older preferences to normal', () => {
     for (const difficulty of ['easy', 'normal', 'hard']) {
       vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ difficulty }) });

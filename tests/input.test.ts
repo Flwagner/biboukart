@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Inputs } from '../src/input';
 import { defaultBindings } from '../src/config';
+import { freshPadBindings } from '../src/gamepad';
 const settings = () => ({
   volume: 0.3,
   musicVolume: 0.55,
@@ -9,6 +10,7 @@ const settings = () => ({
   quality: 'auto',
   reduced: false,
   bindings: defaultBindings.map((b) => [...b]),
+  padBindings: freshPadBindings(),
 });
 afterEach(() => vi.unstubAllGlobals());
 function inputHarness() {
@@ -18,6 +20,74 @@ function inputHarness() {
   return { input: new Inputs(settings()), events };
 }
 describe('independent controls', () => {
+  it('uses independent custom gamepad profiles, analog buttons, axes and item edges', () => {
+    const { input } = inputHarness();
+    const buttons = Array.from({ length: 18 }, () => ({ pressed: false, value: 0 }));
+    const pad = { index: 0, axes: [0, 0, -0.8], buttons };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    input.players = [0, 1].map((i) => ({ character: i, kart: i, device: 'pad:0' }));
+    input.settings.padBindings[0][0] = [{ kind: 'button', index: 4 }];
+    input.settings.padBindings[0][1] = [{ kind: 'button', index: 5 }];
+    input.settings.padBindings[0][2] = [{ kind: 'axis', index: 2, direction: -1 }];
+    input.settings.padBindings[0][4] = [{ kind: 'button', index: 3 }];
+    buttons[4] = { pressed: true, value: 0.7 };
+    buttons[5] = { pressed: true, value: 0.3 };
+    buttons[3] = { pressed: true, value: 1 };
+    const result = input.read();
+    expect(result[0]).toMatchObject({ throttle: 0.7, brake: 0.3, steer: -0.8, use: true });
+    expect(result[1]).toMatchObject({ throttle: 0, brake: 0, steer: 0, use: false });
+    expect(input.read()[0].use).toBe(false);
+    pad.axes[2] = -0.1;
+    expect(input.read()[0].steer).toBe(0);
+  });
+  it('uses a remapped pause button rather than Start', () => {
+    const { input } = inputHarness();
+    const buttons = Array.from({ length: 18 }, () => ({ pressed: false, value: 0 }));
+    vi.stubGlobal('navigator', { getGamepads: () => [{ index: 0, axes: [], buttons }] });
+    input.players = [{ character: 0, kart: 0, device: 'pad:0' }];
+    input.settings.padBindings[0][5] = [{ kind: 'button', index: 8 }];
+    input.onPause = vi.fn();
+    buttons[9] = { pressed: true, value: 1 };
+    input.pollPause();
+    expect(input.onPause).not.toHaveBeenCalled();
+    buttons[8] = { pressed: true, value: 1 };
+    input.pollPause();
+    input.pollPause();
+    expect(input.onPause).toHaveBeenCalledTimes(1);
+    buttons[8] = { pressed: false, value: 0 };
+    input.pollPause();
+    buttons[8] = { pressed: true, value: 1 };
+    input.pollPause();
+    expect(input.onPause).toHaveBeenCalledTimes(2);
+  });
+  it('captures only after release, ignores stick drift and suppresses held inputs after capture', () => {
+    const { input } = inputHarness();
+    const pad = { axes: [0.1], buttons: [{ pressed: true, value: 1 }] };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    const callback = vi.fn(() => true);
+    input.beginPadRemap(callback);
+    expect(input.pollPadRemap()).toBe(true);
+    expect(callback).not.toHaveBeenCalled();
+    pad.buttons[0] = { pressed: false, value: 0 };
+    input.pollPadRemap();
+    expect(callback).not.toHaveBeenCalled();
+    pad.axes[0] = -0.9;
+    input.pollPadRemap();
+    expect(callback).toHaveBeenCalledExactlyOnceWith({ kind: 'axis', index: 0, direction: -1 });
+    expect(input.pollPadRemap()).toBe(true);
+    pad.axes[0] = 0;
+    expect(input.pollPadRemap()).toBe(true);
+    expect(input.pollPadRemap()).toBe(false);
+  });
+  it('cancels capture without changing a mapping', () => {
+    const { input } = inputHarness();
+    const callback = vi.fn(() => true);
+    input.beginPadRemap(callback);
+    input.cancelPadRemap();
+    input.pollPadRemap();
+    expect(callback).not.toHaveBeenCalled();
+    expect(input.onPadRemap).toBeNull();
+  });
   it.each(['keyboard', 'pad:0', 'touch'])(
     'uses negative for left and positive for right on %s',
     (device) => {

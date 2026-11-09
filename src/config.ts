@@ -1,4 +1,5 @@
 import { petPortrait } from './portraits';
+import { freshPadBindings, validPadBindings, type PadControl } from './gamepad';
 export const characters = [
   { name: 'Roxy', animal: 'Renard', icon: '🦊', color: '#ed8445' },
   { name: 'Couscous', animal: 'Lapin', icon: petPortrait('rabbit'), color: '#171a20' },
@@ -221,6 +222,7 @@ export interface Settings {
   quality: string;
   reduced: boolean;
   bindings: string[][];
+  padBindings: PadControl[][][];
 }
 export const difficulties = {
   easy: {
@@ -276,6 +278,7 @@ export function loadSettings(): Settings {
       difficulty: ['easy', 'normal', 'hard'].includes(s.difficulty) ? s.difficulty : 'normal',
       quality: ['auto', 'low', 'medium', 'high'].includes(s.quality) ? s.quality : 'auto',
       reduced: !!s.reduced,
+      padBindings: validPadBindings(s.padBindings) ? s.padBindings : freshPadBindings(),
       bindings:
         Array.isArray(s.bindings) &&
         s.bindings.length === 4 &&
@@ -296,6 +299,7 @@ export function loadSettings(): Settings {
       difficulty: 'normal',
       quality: 'auto',
       reduced: false,
+      padBindings: freshPadBindings(),
       bindings: defaultBindings.map((b) => [...b]),
     };
   }

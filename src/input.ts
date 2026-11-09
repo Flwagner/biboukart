@@ -1,5 +1,6 @@
 import type { PlayerConfig, Settings } from './config';
 import { idleInput, type Input } from './race';
+import { padValue, padPressed, type PadControl } from './gamepad';
 export class Inputs {
   keys = new Set<string>();
   touches = new Map<number, { player: number; action: string }>();
@@ -10,12 +11,55 @@ export class Inputs {
   onDisconnect = () => {};
   onRemap: ((code: string) => void) | null = null;
   pauseButtons = new Map<number, boolean>();
+  onPadRemap: ((control: PadControl) => boolean) | null = null;
+  private padRemapReady = false;
+  private padRemapHeld = false;
+  beginPadRemap(callback: (control: PadControl) => boolean) {
+    this.onPadRemap = callback;
+    this.padRemapReady = false;
+    this.padRemapHeld = true;
+  }
+  cancelPadRemap() {
+    this.onPadRemap = null;
+  }
+  pollPadRemap() {
+    if (!this.onPadRemap && !this.padRemapHeld) return false;
+    const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => !!p);
+    const neutral = pads.every(
+      (p) =>
+        p.buttons.every((b) => !b.pressed && b.value < 0.25) &&
+        p.axes.every((a) => Math.abs(a) < 0.25),
+    );
+    if (!this.onPadRemap) {
+      this.padRemapHeld = !neutral;
+      return true;
+    }
+    if (neutral) this.padRemapReady = true;
+    if (!this.padRemapReady) return true;
+    for (const pad of pads) {
+      const button = pad.buttons.findIndex((b) => b.pressed || b.value > 0.65);
+      const axis = pad.axes.findIndex((a) => Math.abs(a) > 0.65);
+      const control: PadControl | null =
+        button >= 0
+          ? { kind: 'button', index: button }
+          : axis >= 0
+            ? { kind: 'axis', index: axis, direction: pad.axes[axis] < 0 ? -1 : 1 }
+            : null;
+      if (control) {
+        this.padRemapReady = false;
+        if (this.onPadRemap(control)) this.onPadRemap = null;
+        break;
+      }
+    }
+    return true;
+  }
   constructor(public settings: Settings) {
     addEventListener('keydown', (e) => {
       if (this.onRemap) {
         e.preventDefault();
-        this.onRemap(e.code);
+        const callback = this.onRemap;
         this.onRemap = null;
+        callback(e.code);
         return;
       }
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
@@ -47,13 +91,11 @@ export class Inputs {
   pollPause() {
     for (const p of navigator.getGamepads?.() ?? []) {
       if (!p) continue;
-      const pressed = !!p.buttons[9]?.pressed;
-      if (
-        pressed &&
-        !this.pauseButtons.get(p.index) &&
-        this.players.some((player) => player.device === `pad:${p.index}`)
-      )
-        this.onPause();
+      const pressed = this.players.some(
+        (player, i) =>
+          player.device === `pad:${p.index}` && padPressed(p, this.settings.padBindings[i][5]),
+      );
+      if (pressed && !this.pauseButtons.get(p.index)) this.onPause();
       this.pauseButtons.set(p.index, pressed);
     }
   }
@@ -94,10 +136,11 @@ export class Inputs {
       if (player.device.startsWith('pad:')) {
         const p = pads[Number(player.device.split(':')[1])];
         if (p) {
-          result.throttle = Math.max(p.buttons[7]?.value ?? 0, p.buttons[0]?.value ?? 0);
-          result.brake = Math.max(p.buttons[6]?.value ?? 0, p.buttons[1]?.value ?? 0);
-          result.steer = Math.abs(p.axes[0]) > 0.15 ? p.axes[0] : 0;
-          result.use = !!p.buttons[2]?.pressed;
+          const b = this.settings.padBindings[i];
+          result.throttle = padValue(p, b[0]);
+          result.brake = padValue(p, b[1]);
+          result.steer = padValue(p, b[3]) - padValue(p, b[2]);
+          result.use = padPressed(p, b[4]);
         }
       }
       const t = this.touchState[i];

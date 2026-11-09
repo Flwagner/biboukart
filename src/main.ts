@@ -18,6 +18,7 @@ import { Audio } from './audio';
 import { loadSelection, saveSelection } from './storage';
 import { mapProjection, minimapMarkup } from './minimap';
 import { difficulties, type Difficulty } from './config';
+import { freshPadBindings, padActions, padControlLabel } from './gamepad';
 
 const app = document.querySelector<HTMLElement>('#app')!,
   hud = document.querySelector<HTMLElement>('#hud')!;
@@ -73,6 +74,8 @@ const button = (label: string, id: string, cls = '') =>
 const shell = (body: string, step = '') =>
   `<div class="menu-shell"><header class="topbar"><a class="brand" href="#" id="brand">bibou<span>kart</span><i>✦</i></a><span class="top-tag">${step || 'PETITS KARTS. GRANDES ÉMOTIONS.'}</span><button id="sound" class="icon-button" aria-label="Activer ou couper le son">${settings.volume ? '♫' : '♪'}</button></header>${body}<footer><span>FAIT POUR JOUER ENSEMBLE</span><span class="online-dot">100 % navigateur · 100 % local</span></footer></div>`;
 function common() {
+  inputs.onRemap = null;
+  inputs.cancelPadRemap();
   document.body.classList.remove('racing', 'showing-podium');
   $('#brand')?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -246,9 +249,77 @@ function options() {
     settings.reduced = (e.target as HTMLInputElement).checked;
     renderer.setQuality(settings.quality, settings.reduced);
   };
+  $('#back').insertAdjacentHTML(
+    'beforebegin',
+    `<h2>Une manette à votre façon</h2><p>Appuyez sur un bouton de votre manette pour la connecter. Cliquez une action, relâchez les commandes, puis appuyez sur le bouton ou déplacez le stick souhaité. Chaque profil correspond au joueur, quelle que soit la manette attribuée dans le garage. Les noms des boutons sont indicatifs pour les manettes standard.</p><div class="binding-grid">${settings.padBindings.map((profile, i) => `<div><strong>Joueur ${i + 1}</strong>${profile.map((binding, j) => `<button data-pad-bind="${i}:${j}"><small>${padActions[j]}</small><span>${binding.map(padControlLabel).join(' / ')}</span></button>`).join('')}<button data-pad-reset="${i}">Rétablir les commandes J${i + 1}</button></div>`).join('')}</div><p id="pad-remap-status" role="status"></p><button id="pad-remap-cancel" class="secondary" hidden>Annuler le mapping</button>`,
+  );
+  const cancelRemap = () => {
+    inputs.onRemap = null;
+    inputs.cancelPadRemap();
+    app.querySelectorAll<HTMLElement>('[data-pad-bind][aria-busy]').forEach((el) => {
+      const [i, j] = el.dataset.padBind!.split(':').map(Number);
+      el.querySelector('span')!.textContent = settings.padBindings[i][j]
+        .map(padControlLabel)
+        .join(' / ');
+      el.removeAttribute('aria-busy');
+    });
+    $('#remap-status').textContent = '';
+    $('#pad-remap-status').textContent = '';
+    $('#pad-remap-cancel').hidden = true;
+  };
+  $('#pad-remap-cancel').onclick = cancelRemap;
+  app.querySelectorAll<HTMLElement>('[data-pad-bind]').forEach((el) => {
+    el.onclick = () => {
+      cancelRemap();
+      const [i, j] = el.dataset.padBind!.split(':').map(Number);
+      el.setAttribute('aria-busy', 'true');
+      el.querySelector('span')!.textContent = 'Appuyez sur une commande…';
+      $('#pad-remap-status').textContent =
+        `Joueur ${i + 1} · ${padActions[j]} : relâchez les commandes, puis appuyez sur un bouton ou déplacez un stick… (Échap pour annuler)`;
+      $('#pad-remap-cancel').hidden = false;
+      inputs.onRemap = function cancelWithEscape(code) {
+        if (code === 'Escape') cancelRemap();
+        else inputs.onRemap = cancelWithEscape;
+      };
+      inputs.beginPadRemap((control) => {
+        const conflict = settings.padBindings[i].findIndex(
+          (binding, action) =>
+            action !== j &&
+            binding.some(
+              (c) =>
+                c.kind === control.kind &&
+                c.index === control.index &&
+                (c.kind !== 'axis' ||
+                  (control.kind === 'axis' && c.direction === control.direction)),
+            ),
+        );
+        if (conflict >= 0) {
+          el.querySelector('span')!.textContent = 'Commande déjà utilisée — réessayez';
+          $('#pad-remap-status').textContent =
+            `Cette commande est déjà utilisée pour « ${padActions[conflict]} ». Choisissez une autre commande ou annulez.`;
+          return false;
+        }
+        settings.padBindings[i][j] = [control];
+        saveSettings(settings);
+        options();
+        $(`[data-pad-bind="${i}:${j}"]`).focus();
+        return true;
+      });
+    };
+  });
+  app.querySelectorAll<HTMLElement>('[data-pad-reset]').forEach((el) => {
+    el.onclick = () => {
+      const i = Number(el.dataset.padReset);
+      settings.padBindings[i] = freshPadBindings()[i];
+      saveSettings(settings);
+      options();
+      $(`[data-pad-reset="${i}"]`).focus();
+    };
+  });
   app.querySelectorAll<HTMLElement>('[data-bind]').forEach(
     (el) =>
       (el.onclick = () => {
+        cancelRemap();
         const [i, j] = el.dataset.bind!.split(':').map(Number);
         $('#remap-status').textContent = 'Appuyez sur une touche… (Échap pour annuler)';
         inputs.onRemap = (code) => {
@@ -261,7 +332,7 @@ function options() {
       }),
   );
   $('#back').onclick = () => {
-    inputs.onRemap = null;
+    cancelRemap();
     saveSettings(settings);
     home();
   };
@@ -571,8 +642,13 @@ function menuGamepad(now: number) {
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  inputs.pollPause();
-  menuGamepad(now);
+  if (inputs.pollPadRemap()) {
+    gamepadMenuLatch = true;
+    gamepadMenuLast = now;
+  } else {
+    inputs.pollPause();
+    menuGamepad(now);
+  }
   if (race && screen === 'race' && !paused) {
     accumulator += dt;
     let steps = 0;
@@ -619,6 +695,9 @@ if (import.meta.env.DEV) {
       },
       get audio() {
         return audio;
+      },
+      get inputs() {
+        return inputs;
       },
       start: (count = 1, track = 0) => {
         playerCount = count;

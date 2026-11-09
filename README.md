@@ -34,6 +34,8 @@ Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit.
 
 Touches **physiques** modifiables dans les réglages : sur AZERTY, remapper W/A en Z/Q si souhaité. Profils 3 et 4 : I/K/J/L/O et pavé numérique 8/5/4/6/0. Plusieurs touches simultanées peuvent être bloquées par certains claviers : privilégier les manettes à 3–4 joueurs.
 
+Dans **Réglages → Une manette à votre façon**, chaque joueur peut personnaliser accélération, frein/recul, gauche, droite, objet et pause. Cliquez une action, relâchez les commandes, puis appuyez sur le bouton/gâchette ou déplacez le stick souhaité. Une commande déjà affectée à une autre action du même joueur est refusée. Échap ou « Annuler le mapping » annule la capture ; « Rétablir les commandes » restaure le profil du joueur. Les profils sont sauvegardés localement et s’appliquent à la manette attribuée à ce joueur dans le garage. La navigation des menus conserve les commandes standard.
+
 Au tactile, chaque moitié d'écran possède direction, accélérateur, frein et objet. Maintenir frein à l'arrêt pour reculer. Le changement d'application ou la perte de focus met la course en pause. Une manette déconnectée peut être réattribuée depuis la pause.
 
 Le plein écran est demandé automatiquement au clic sur « C’est parti » lorsque le navigateur le permet (une interaction est obligatoire, pas besoin de F11). En cas de refus, le jeu reste jouable dans l’onglet. Échap permet de sortir du plein écran et la pause propose de le réactiver ou de le quitter ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus. Dans les menus à la manette : haut/bas pour naviguer, gauche/droite pour modifier une liste, A pour valider.
