@@ -102,6 +102,7 @@ function home() {
   );
   common();
   $('#play').onclick = () => {
+    void enterFullscreen().catch(() => {});
     void audio.unlock();
     setup();
   };
@@ -382,6 +383,14 @@ function updateHUD() {
       ? `Fin dans ${Math.max(0, Math.ceil(race.finishDeadline - race.elapsed))} s`
       : formatTime(race.elapsed);
 }
+async function enterFullscreen() {
+  if (!document.fullscreenEnabled || document.fullscreenElement) return;
+  await document.documentElement.requestFullscreen();
+  const orientation = window.screen.orientation as ScreenOrientation & {
+    lock?: (mode: string) => Promise<void>;
+  };
+  if (mobile()) await orientation.lock?.('landscape').catch(() => {});
+}
 function pause(message = 'On reprend son souffle ?') {
   if (!race || race.finished || screen !== 'race') return;
   paused = true;
@@ -397,13 +406,7 @@ function pause(message = 'On reprend son souffle ?') {
     fullscreen.onclick = async () => {
       try {
         if (document.fullscreenElement) await document.exitFullscreen();
-        else {
-          await document.documentElement.requestFullscreen();
-          const orientation = window.screen.orientation as ScreenOrientation & {
-            lock?: (mode: string) => Promise<void>;
-          };
-          if (mobile()) await orientation.lock?.('landscape').catch(() => {});
-        }
+        else await enterFullscreen();
         pause();
       } catch {
         $('#fullscreen-status').textContent =

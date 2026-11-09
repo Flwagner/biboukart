@@ -36,7 +36,7 @@ Touches **physiques** modifiables dans les réglages : sur AZERTY, remapper W/A 
 
 Au tactile, chaque moitié d'écran possède direction, accélérateur, frein et objet. Maintenir frein à l'arrêt pour reculer. Le changement d'application ou la perte de focus met la course en pause. Une manette déconnectée peut être réattribuée depuis la pause.
 
-La pause propose le plein écran lorsque le navigateur le permet ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus. Dans les menus à la manette : haut/bas pour naviguer, gauche/droite pour modifier une liste, A pour valider.
+Le plein écran est demandé automatiquement au clic sur « C’est parti » lorsque le navigateur le permet (une interaction est obligatoire, pas besoin de F11). En cas de refus, le jeu reste jouable dans l’onglet. Échap permet de sortir du plein écran et la pause propose de le réactiver ou de le quitter ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus. Dans les menus à la manette : haut/bas pour naviguer, gauche/droite pour modifier une liste, A pour valider.
 
 ## Développement
 
