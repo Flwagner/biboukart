@@ -14,15 +14,21 @@ export class Inputs {
   onPadRemap: ((control: PadControl) => boolean) | null = null;
   private padRemapReady = false;
   private padRemapHeld = false;
-  beginPadRemap(callback: (control: PadControl) => boolean) {
+  private padRemapBack: { pad: number; since: number } | null = null;
+  private onPadRemapCancel: (() => void) | null = null;
+  beginPadRemap(callback: (control: PadControl) => boolean, onCancel?: () => void) {
     this.onPadRemap = callback;
     this.padRemapReady = false;
     this.padRemapHeld = true;
+    this.padRemapBack = null;
+    this.onPadRemapCancel = onCancel ?? null;
   }
   cancelPadRemap() {
     this.onPadRemap = null;
+    this.padRemapBack = null;
+    this.onPadRemapCancel = null;
   }
-  pollPadRemap() {
+  pollPadRemap(now = performance.now()) {
     if (!this.onPadRemap && !this.padRemapHeld) return false;
     const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => !!p);
     const neutral = pads.every(
@@ -32,6 +38,23 @@ export class Inputs {
     );
     if (!this.onPadRemap) {
       this.padRemapHeld = !neutral;
+      return true;
+    }
+    if (this.padRemapBack) {
+      const back = this.padRemapBack;
+      const pad = pads.find((p) => p.index === back.pad);
+      if (!pad) {
+        this.padRemapBack = null;
+        this.padRemapReady = false;
+      } else if (pad.buttons[1]?.pressed) {
+        if (now - back.since >= 800) {
+          this.onPadRemapCancel?.();
+          this.cancelPadRemap();
+        }
+      } else {
+        this.padRemapBack = null;
+        if (this.onPadRemap({ kind: 'button', index: 1 })) this.onPadRemap = null;
+      }
       return true;
     }
     if (neutral) this.padRemapReady = true;
@@ -47,6 +70,10 @@ export class Inputs {
             : null;
       if (control) {
         this.padRemapReady = false;
+        if (button === 1) {
+          this.padRemapBack = { pad: pad.index, since: now };
+          break;
+        }
         if (this.onPadRemap(control)) this.onPadRemap = null;
         break;
       }

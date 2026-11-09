@@ -20,6 +20,30 @@ function inputHarness() {
   return { input: new Inputs(settings()), events };
 }
 describe('independent controls', () => {
+  it('allows a short B press to be mapped but holding B cancels capture', () => {
+    const { input } = inputHarness();
+    const buttons = Array.from({ length: 18 }, () => ({ pressed: false, value: 0 }));
+    vi.stubGlobal('navigator', { getGamepads: () => [{ index: 0, axes: [0, 0], buttons }] });
+    const captured = vi.fn(() => true),
+      cancel = vi.fn();
+    input.beginPadRemap(captured, cancel);
+    input.pollPadRemap(0);
+    buttons[1] = { pressed: true, value: 1 };
+    input.pollPadRemap(10);
+    input.pollPadRemap(700);
+    expect(captured).not.toHaveBeenCalled();
+    buttons[1] = { pressed: false, value: 0 };
+    input.pollPadRemap(710);
+    expect(captured).toHaveBeenCalledExactlyOnceWith({ kind: 'button', index: 1 });
+    input.beginPadRemap(captured, cancel);
+    input.pollPadRemap(1000);
+    buttons[1] = { pressed: true, value: 1 };
+    input.pollPadRemap(1010);
+    input.pollPadRemap(1810);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(captured).toHaveBeenCalledTimes(1);
+    expect(input.onPadRemap).toBeNull();
+  });
   it('uses independent custom gamepad profiles, analog buttons, axes and item edges', () => {
     const { input } = inputHarness();
     const buttons = Array.from({ length: 18 }, () => ({ pressed: false, value: 0 }));

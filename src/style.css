@@ -706,6 +706,30 @@ select {
 #pad-remap-cancel[hidden] {
   display: none;
 }
+.gamepad-navigation #app :focus {
+  outline: 3px solid #ffb52e;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px #172c4280;
+}
+.gamepad-hints {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 10px 16px;
+  background: #172c42f2;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+.gamepad-hints[hidden] {
+  display: none;
+}
+body:has(.gamepad-hints:not([hidden])) .menu-shell {
+  padding-bottom: 64px;
+}
 .binding-grid > div {
   display: flex;
   gap: 5px;

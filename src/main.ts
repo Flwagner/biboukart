@@ -19,6 +19,7 @@ import { loadSelection, saveSelection } from './storage';
 import { mapProjection, minimapMarkup } from './minimap';
 import { difficulties, type Difficulty } from './config';
 import { freshPadBindings, padActions, padControlLabel } from './gamepad';
+import { MenuGamepad, applyMenuAction, focusMenuControl, menuFocusables } from './menuGamepad';
 
 const app = document.querySelector<HTMLElement>('#app')!,
   hud = document.querySelector<HTMLElement>('#hud')!;
@@ -63,8 +64,15 @@ let race: Race | null = null,
   accumulator = 0,
   hudTime = 0,
   startTime = performance.now();
-let gamepadMenuLatch = false,
-  gamepadMenuLast = 0;
+const menuControls = new MenuGamepad();
+let menuPad: number | null = null;
+const gamepadHints = document.createElement('div');
+gamepadHints.className = 'gamepad-hints';
+gamepadHints.hidden = true;
+gamepadHints.setAttribute('aria-label', 'Commandes des menus à la manette');
+document.body.append(gamepadHints);
+for (const event of ['pointerdown', 'keydown'])
+  addEventListener(event, () => document.body.classList.remove('gamepad-navigation'));
 let pendingUse: boolean[] = [];
 let lastLapUntil: number[] = [];
 let projectMap: ReturnType<typeof mapProjection> | null = null;
@@ -107,6 +115,11 @@ function home() {
   $('#play').onclick = () => {
     void enterFullscreen().catch(() => {});
     void audio.unlock();
+    if (
+      menuPad !== null &&
+      !players.slice(1, playerCount).some((p) => p.device === `pad:${menuPad}`)
+    )
+      players[0].device = `pad:${menuPad}`;
     setup();
   };
   $('#help').onclick = () => help();
@@ -181,6 +194,7 @@ function tracks() {
         selectedTrack = Number(el.dataset.track);
         renderer.menu(selectedTrack);
         tracks();
+        $(`[data-track="${selectedTrack}"]`).focus();
       }),
   );
   $('#back').onclick = setup;
@@ -275,7 +289,7 @@ function options() {
       el.setAttribute('aria-busy', 'true');
       el.querySelector('span')!.textContent = 'Appuyez sur une commande…';
       $('#pad-remap-status').textContent =
-        `Joueur ${i + 1} · ${padActions[j]} : relâchez les commandes, puis appuyez sur un bouton ou déplacez un stick… (Échap pour annuler)`;
+        `Joueur ${i + 1} · ${padActions[j]} : relâchez les commandes, puis appuyez sur un bouton ou déplacez un stick… (maintenir B / Rond ou Échap pour annuler)`;
       $('#pad-remap-cancel').hidden = false;
       inputs.onRemap = function cancelWithEscape(code) {
         if (code === 'Escape') cancelRemap();
@@ -304,7 +318,7 @@ function options() {
         options();
         $(`[data-pad-bind="${i}:${j}"]`).focus();
         return true;
-      });
+      }, cancelRemap);
     };
   });
   app.querySelectorAll<HTMLElement>('[data-pad-reset]').forEach((el) => {
@@ -496,7 +510,11 @@ function controllerDialog() {
     )
     .join(
       '',
-    )}<p id="controller-error" role="alert"></p>${button('Valider', 'confirm', 'primary')}</section></div>`;
+    )}<p id="controller-error" role="alert"></p>${button('Valider', 'confirm', 'primary')}${button('← Retour à la pause', 'controller-back', 'secondary')}</section></div>`;
+  $('#controller-back').onclick = () => {
+    pause();
+    $('#controllers').focus();
+  };
   $('#confirm').onclick = () => {
     const selections = Array.from(app.querySelectorAll<HTMLSelectElement>('[data-controller]')).map(
         (s) => s.value,
@@ -526,7 +544,8 @@ function resume() {
 }
 inputs.onPause = () => {
   if (screen === 'race') {
-    if (paused) resume();
+    if ($('#controller-back')) pause();
+    else if (paused) resume();
     else pause();
   }
 };
@@ -552,6 +571,15 @@ document.addEventListener('visibilitychange', () => {
 });
 addEventListener('gamepadconnected', () => {
   if (screen === 'setup') setup();
+  else if ($('#controller-back')) {
+    const selected = Array.from(app.querySelectorAll<HTMLSelectElement>('[data-controller]')).map(
+      (s) => s.value,
+    );
+    controllerDialog();
+    app.querySelectorAll<HTMLSelectElement>('[data-controller]').forEach((s, i) => {
+      if (Array.from(s.options).some((o) => o.value === selected[i])) s.value = selected[i];
+    });
+  }
 });
 addEventListener('resize', () => {
   inputs.clear();
@@ -594,61 +622,76 @@ function results() {
 function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
 }
-function menuGamepad(now: number) {
-  if (screen === 'race' && !paused) return;
-  const pad = Array.from(navigator.getGamepads?.() ?? []).find((p) => p?.connected);
-  if (!pad) return;
-  const vertical =
-    pad.axes[1] > 0.5 || pad.buttons[13]?.pressed
-      ? 1
-      : pad.axes[1] < -0.5 || pad.buttons[12]?.pressed
-        ? -1
-        : 0;
-  const horizontal =
-    pad.axes[0] > 0.5 || pad.buttons[15]?.pressed
-      ? 1
-      : pad.axes[0] < -0.5 || pad.buttons[14]?.pressed
-        ? -1
-        : 0;
-  const direction = vertical || horizontal;
-  if (direction && now - gamepadMenuLast > 220) {
-    const active = document.activeElement;
-    if (active instanceof HTMLSelectElement && horizontal) {
-      active.selectedIndex =
-        (active.selectedIndex + horizontal + active.options.length) % active.options.length;
-      active.dispatchEvent(new Event('change'));
-    } else {
-      const focusables = Array.from(
-        app.querySelectorAll<HTMLElement>('button,select,input,a'),
-      ).filter((e) => e.offsetParent !== null);
-      const index = focusables.indexOf(document.activeElement as HTMLElement);
-      focusables[(index + direction + focusables.length) % focusables.length]?.focus();
-    }
-    gamepadMenuLast = now;
+function initialMenuControl() {
+  const selector =
+    screen === 'home'
+      ? '#play'
+      : screen === 'setup'
+        ? '[data-count].selected'
+        : screen === 'tracks'
+          ? '[data-track].active'
+          : screen === 'settings'
+            ? '#volume'
+            : screen === 'results'
+              ? '#again'
+              : screen === 'help'
+                ? '#back'
+                : $('#controller-back')
+                  ? '[data-controller]'
+                  : '#resume';
+  return $(selector);
+}
+function menuBack() {
+  if (inputs.onRemap) {
+    const callback = inputs.onRemap;
+    inputs.onRemap = null;
+    callback('Escape');
+  } else if ($('#controller-back')) $('#controller-back').click();
+  else if (screen === 'race' && paused) resume();
+  else ($('#back') ?? $('#home'))?.click();
+}
+function menuGamepad(now: number, dt: number) {
+  const pads = Array.from(navigator.getGamepads?.() ?? []);
+  const actions = menuControls.poll(pads, now);
+  const capturing = !!inputs.onPadRemap;
+  const suppressed = inputs.pollPadRemap(now);
+  const wasPaused = paused;
+  if (!suppressed) inputs.pollPause();
+  const inMenu = screen !== 'race' || paused;
+  gamepadHints.hidden = !inMenu || !pads.some((p) => p?.connected);
+  const hint = capturing
+    ? 'Relâcher puis appuyer : affecter · B / Rond maintenu : annuler'
+    : 'Stick / croix : naviguer · ← → : régler · A / Croix : valider · B / Rond : retour · Stick droit : défiler';
+  if (gamepadHints.textContent !== hint) gamepadHints.textContent = hint;
+  if (!inMenu || suppressed || wasPaused !== paused) return;
+  if (actions.length) {
+    document.body.classList.add('gamepad-navigation');
+    // Browsers may still require a trusted mouse/key interaction for audio/fullscreen.
+    if (!audio.context) void audio.unlock();
   }
-  const pressed = !!pad.buttons[0]?.pressed;
-  if (pressed && !gamepadMenuLatch) {
-    const active = document.activeElement;
-    if (active instanceof HTMLSelectElement) {
-      active.selectedIndex = (active.selectedIndex + 1) % active.options.length;
-      active.dispatchEvent(new Event('change'));
-    } else if (active instanceof HTMLInputElement && active.type === 'checkbox') {
-      active.click();
-    } else if (active instanceof HTMLElement && active !== document.body) active.click();
-    else app.querySelector<HTMLElement>('button')?.focus();
+  if (
+    document.body.classList.contains('gamepad-navigation') &&
+    !menuFocusables(app).includes(document.activeElement as HTMLElement)
+  ) {
+    const initial = initialMenuControl();
+    if (initial) focusMenuControl(initial);
   }
-  gamepadMenuLatch = pressed;
+  for (const action of actions) {
+    menuPad = action.pad;
+    if (action.kind === 'back') menuBack();
+    else if (action.kind === 'scroll') {
+      const target = app.querySelector('.pause-panel') ?? document.scrollingElement;
+      target?.scrollBy({ top: action.y * dt * 650 });
+    } else if (!inputs.onRemap) applyMenuAction(app, action, initialMenuControl());
+    menuPad = null;
+    // One activation per frame, even with several controllers or after screen changes.
+    if (action.kind === 'confirm' || action.kind === 'back') break;
+  }
 }
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (inputs.pollPadRemap()) {
-    gamepadMenuLatch = true;
-    gamepadMenuLast = now;
-  } else {
-    inputs.pollPause();
-    menuGamepad(now);
-  }
+  menuGamepad(now, dt);
   if (race && screen === 'race' && !paused) {
     accumulator += dt;
     let steps = 0;

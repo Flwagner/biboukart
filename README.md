@@ -34,11 +34,25 @@ Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit.
 
 Touches **physiques** modifiables dans les réglages : sur AZERTY, remapper W/A en Z/Q si souhaité. Profils 3 et 4 : I/K/J/L/O et pavé numérique 8/5/4/6/0. Plusieurs touches simultanées peuvent être bloquées par certains claviers : privilégier les manettes à 3–4 joueurs.
 
-Dans **Réglages → Une manette à votre façon**, chaque joueur peut personnaliser accélération, frein/recul, gauche, droite, objet et pause. Cliquez une action, relâchez les commandes, puis appuyez sur le bouton/gâchette ou déplacez le stick souhaité. Une commande déjà affectée à une autre action du même joueur est refusée. Échap ou « Annuler le mapping » annule la capture ; « Rétablir les commandes » restaure le profil du joueur. Les profils sont sauvegardés localement et s’appliquent à la manette attribuée à ce joueur dans le garage. La navigation des menus conserve les commandes standard.
+Dans **Réglages → Une manette à votre façon**, chaque joueur peut personnaliser accélération, frein/recul, gauche, droite, objet et pause. Validez une action, relâchez les commandes, puis appuyez sur le bouton/gâchette ou déplacez le stick souhaité. Une commande déjà affectée à une autre action du même joueur est refusée. Maintenir **B / Rond pendant 0,8 seconde**, Échap ou « Annuler le mapping » annule la capture ; un appui court sur B reste assignable et est capturé au relâchement. « Rétablir les commandes » restaure le profil du joueur. Les profils sont sauvegardés localement et s’appliquent à la manette attribuée à ce joueur dans le garage.
 
 Au tactile, chaque moitié d'écran possède direction, accélérateur, frein et objet. Maintenir frein à l'arrêt pour reculer. Le changement d'application ou la perte de focus met la course en pause. Une manette déconnectée peut être réattribuée depuis la pause.
 
-Le plein écran est demandé automatiquement au clic sur « C’est parti » lorsque le navigateur le permet (une interaction est obligatoire, pas besoin de F11). En cas de refus, le jeu reste jouable dans l’onglet. Échap permet de sortir du plein écran et la pause propose de le réactiver ou de le quitter ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus. Dans les menus à la manette : haut/bas pour naviguer, gauche/droite pour modifier une liste, A pour valider.
+### Menus entièrement à la manette
+
+Toutes les manettes connectées peuvent piloter les menus, indépendamment des profils de conduite :
+
+| Commande standard     | Action dans les menus                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Stick gauche ou croix | Haut/bas : parcourir les commandes ; gauche/droite : modifier une liste ou un volume, sinon parcourir les commandes         |
+| A / Croix             | Valider un bouton, cocher/décocher, ou passer au choix suivant dans une liste                                               |
+| B / Rond              | Revenir à l’écran précédent, enregistrer et quitter les réglages, reprendre depuis la pause, ou annuler une capture clavier |
+| Stick droit vertical  | Faire défiler une longue page ou une fenêtre de pause                                                                       |
+| B / Rond maintenu     | Annuler la capture d’une commande de manette                                                                                |
+
+Le focus est surligné et défile automatiquement à l’écran. Une pression maintenue ne valide pas plusieurs écrans. Valider « C’est parti » à la manette attribue celle-ci au premier joueur si elle n’est pas déjà utilisée par un autre ; le garage permet ensuite de changer toutes les attributions. La pause, le changement de contrôleurs (avec retour sans appliquer), le podium, la revanche et le changement de circuit sont accessibles sans clavier ni souris. La navigation des menus conserve ces commandes standard même après un remapping de conduite.
+
+Le plein écran est demandé automatiquement en validant « C’est parti » lorsque le navigateur le permet. **Certains navigateurs exigent un clic ou une touche clavier pour autoriser le plein écran et/ou le son ; une validation issue de la Gamepad API n’est pas toujours une interaction autorisée.** Cela ne bloque ni les menus ni la course : le jeu reste jouable dans l’onglet, éventuellement sans son. Échap permet de sortir du plein écran et la pause propose de le réactiver ou de le quitter ; sur mobile, le verrouillage paysage est tenté sans bloquer le jeu en cas de refus.
 
 ## Développement
 
@@ -92,6 +106,7 @@ La base Vite est relative (`./`) : aucune route serveur, aucun service externe e
 | `src/effects.ts`                                  | Jets de turbo et étoiles de cadeaux préalloués, effets réduits et nettoyage GPU   |
 | `src/itemModels.ts`                               | Modèles réutilisables de missiles et de flaques                                   |
 | `src/input.ts`                                    | Clavier, manettes, multitouch et isolation des joueurs                            |
+| `src/gamepad.ts` / `src/menuGamepad.ts`           | Profils de manette, capture des commandes, navigation et focus des menus          |
 | `src/main.ts`                                     | Écrans, HUD, orchestration de la partie et boucle principale                      |
 | `src/audio.ts`                                    | Mixage Web Audio, moteur, activation après interaction et pause                   |
 | `src/music.ts` / `src/synth.ts` / `src/sounds.ts` | Composition originale et synthèse des instruments et bruitages                    |
