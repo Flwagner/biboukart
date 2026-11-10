@@ -156,7 +156,7 @@ function setup() {
   app.querySelectorAll<HTMLElement>('.player-card').forEach((card, i) => {
     card.insertAdjacentHTML(
       'beforeend',
-      `<label class="check child-mode"><input type="checkbox" data-child-player="${i}" aria-label="Mode enfant joueur ${i + 1}" ${players[i].childMode ? 'checked' : ''}><span>Mode enfant<small>Avance tout seul · reste sur la route</small></span></label>`,
+      `<label class="check child-mode"><input type="checkbox" data-child-player="${i}" aria-label="Mode enfant joueur ${i + 1}" ${players[i].childMode ? 'checked' : ''}><span>Mode enfant<small>Avance tout seul · reste sur la route · cadeaux automatiques</small></span></label>`,
     );
   });
   app.querySelectorAll<HTMLInputElement>('input[data-child-player]').forEach((el) => {
@@ -193,7 +193,7 @@ function setup() {
 }
 function playerCard(p: PlayerConfig, i: number) {
   const pads = Array.from(navigator.getGamepads?.() ?? []).filter((p): p is Gamepad => !!p);
-  return `<article class="player-card player-${i}"><div class="player-label"><span>JOUEUR ${i + 1}</span><span>●</span></div><div class="character-preview" style="--character-color:${characters[p.character].color}"><span>${characters[p.character].icon}</span>${kartPortrait(karts[p.kart])}</div><label>VOTRE PILOTE<select data-player="${i}" data-field="character" aria-label="Personnage joueur ${i + 1}">${characters.map((c, j) => previewOption(j, p.character === j, `${c.name} · ${c.animal}`, c.icon)).join('')}</select></label><label>VOTRE KART<select data-player="${i}" data-field="kart" aria-label="Kart joueur ${i + 1}">${karts.map((k, j) => previewOption(j, p.kart === j, k.name, kartPortrait(k))).join('')}</select></label><div class="stats"><span>Vitesse <b>${'▰'.repeat(Math.round((karts[p.kart].speed - 20) / 3))}</b></span><span>Agilité <b>${'▰'.repeat(Math.round(karts[p.kart].handling * 2))}</b></span></div><label>COMMANDES<select data-player="${i}" data-field="device" aria-label="Contrôleur joueur ${i + 1}"><option value="keyboard" ${p.device === 'keyboard' ? 'selected' : ''}>Clavier · profil ${i + 1}</option><option value="touch" ${p.device === 'touch' ? 'selected' : ''}>Écran tactile</option>${pads.map((pad) => `<option value="pad:${pad.index}" ${p.device === `pad:${pad.index}` ? 'selected' : ''}>Manette ${pad.index + 1}</option>`).join('')}</select></label></article>`;
+  return `<article class="player-card player-${i}"><div class="player-label"><span>JOUEUR ${i + 1}</span><span>●</span></div><div class="character-preview" style="--character-color:${characters[p.character].color}"><span>${characters[p.character].icon}</span>${kartPortrait(karts[p.kart])}</div><label>VOTRE PILOTE<select data-player="${i}" data-field="character" aria-label="Personnage joueur ${i + 1}">${characters.map((c, j) => previewOption(j, p.character === j, `${c.name} · ${c.animal}`, c.icon)).join('')}</select></label><label>VOTRE KART<select data-player="${i}" data-field="kart" aria-label="Kart joueur ${i + 1}">${karts.map((k, j) => previewOption(j, p.kart === j, k.name, kartPortrait(k))).join('')}</select></label><div class="stats"><span>Mêmes performances, chacun son style</span></div><label>COMMANDES<select data-player="${i}" data-field="device" aria-label="Contrôleur joueur ${i + 1}"><option value="keyboard" ${p.device === 'keyboard' ? 'selected' : ''}>Clavier · profil ${i + 1}</option><option value="touch" ${p.device === 'touch' ? 'selected' : ''}>Écran tactile</option>${pads.map((pad) => `<option value="pad:${pad.index}" ${p.device === `pad:${pad.index}` ? 'selected' : ''}>Manette ${pad.index + 1}</option>`).join('')}</select></label></article>`;
 }
 function tracks() {
   screen = 'tracks';
@@ -234,7 +234,7 @@ function tracks() {
 function help() {
   screen = 'help';
   app.innerHTML = shell(
-    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🛢️ <b>Flaque</b> : une glissade pour les suivants.<br>🍄 <b>Géant</b> : 7 secondes pour projeter les rivaux et traverser les obstacles.<br>💥 <b>Onde de choc</b> : sautez et assommez les rivaux proches à l’atterrissage.</p><p>Le bouclier bloque aussi les projections et l’onde de choc. Géant ne signifie pas invincible aux objets ! Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Après l’arrivée du premier humain, les autres ont 45 secondes pour finir.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
+    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🛢️ <b>Flaque</b> : une glissade pour les suivants.<br>🍄 <b>Géant</b> : 7 secondes pour projeter les rivaux et traverser les obstacles.<br>💥 <b>Onde de choc</b> : sautez et assommez les rivaux proches à l’atterrissage.</p><p>Le bouclier bloque aussi les projections et l’onde de choc. Géant ne signifie pas invincible aux objets ! Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Chaque kart s’arrête à l’arrivée du troisième tour. Le podium s’affiche dès que tous les joueurs humains ont terminé, sans limite de temps et sans attendre les bots.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
   );
   common();
   $('#back').onclick = home;
@@ -472,10 +472,7 @@ function updateHUD() {
     el.classList.toggle('collecting', renderer.effects?.isCollecting(i) ?? false);
   }
   const clock = hud.querySelector('#race-clock');
-  if (clock)
-    clock.textContent = Number.isFinite(race.finishDeadline)
-      ? `Fin dans ${Math.max(0, Math.ceil(race.finishDeadline - race.elapsed))} s`
-      : formatTime(race.elapsed);
+  if (clock) clock.textContent = formatTime(race.elapsed);
 }
 async function enterFullscreen() {
   if (!document.fullscreenEnabled || document.fullscreenElement) return;

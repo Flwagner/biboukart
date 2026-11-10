@@ -21,7 +21,7 @@ Un jeu de karting 3D stylisé original, entièrement dans le navigateur. **Three
 - Musique originale en boucle (8 mesures, 116 BPM), basse, mélodie et percussions ; sons distincts de cadeaux, pouvoirs, collisions, départ et arrivée. Volumes général/musique/effets indépendants.
 - Pas de drift, multijoueur réseau, téléchargement de contenu ou installation nécessaire.
 
-Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Après l'arrivée du premier humain, les autres disposent de 45 secondes ; la course se termine plus tôt si tous les humains sont arrivés.
+Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit. Chaque kart s’arrête dès son arrivée à la fin du troisième tour. Le podium s’affiche dès que tous les joueurs humains sont arrivés, sans limite de temps et sans attendre les bots.
 
 ### Des circuits à explorer
 
@@ -39,7 +39,7 @@ La route alternative est presque aussi large que la piste principale : ce n'est 
 
 ### Mode enfant
 
-Dans le garage, cochez **Mode enfant** sur la fiche du joueur concerné (choix mémorisé). Son kart accélère automatiquement, mais l’enfant dirige entièrement le kart : aucune correction de trajectoire ni de contresens tant qu’il ne touche pas le bord. Au contact du bord uniquement, le kart reste sur la route et se réoriente progressivement vers l’avant ; en cas de blocage persistant au bord, il est remis en piste. L’enfant utilise ses objets lui-même. Le frein est prioritaire et permet de s’arrêter, sans marche arrière ; relâchez-le pour repartir. L’assistance fonctionne au clavier, à la manette et au tactile, sans modifier la conduite des autres joueurs ni supprimer les effets des objets.
+Dans le garage, cochez **Mode enfant** sur la fiche du joueur concerné (choix mémorisé). Son kart accélère automatiquement, mais l’enfant dirige entièrement le kart : aucune correction de trajectoire ni de contresens tant qu’il ne touche pas le bord. Au contact du bord uniquement, le kart reste sur la route et se réoriente progressivement vers l’avant ; en cas de blocage persistant au bord, il est remis en piste. Les cadeaux s’activent automatiquement dès leur récupération, sans appui sur le bouton objet ; si l’utilisation est temporairement bloquée (étourdissement, projection ou délai entre objets), l’objet est conservé puis activé dès que possible. Le frein est prioritaire et permet de s’arrêter, sans marche arrière ; relâchez-le pour repartir. L’assistance fonctionne au clavier, à la manette et au tactile, sans modifier la conduite des autres joueurs ni supprimer les effets des objets.
 
 ### Commandes par défaut
 

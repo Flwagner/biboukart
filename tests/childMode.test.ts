@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Race, idleInput, wrap } from '../src/race';
+import { itemNames } from '../src/config';
 
 const child = { character: 0, kart: 0, device: 'keyboard', childMode: true };
 function solo(track = 0) {
@@ -41,7 +42,66 @@ describe('per-player child assistance', () => {
     expect(race.racers[1].speed).toBe(0);
     expect(race.racers[2].config.childMode).not.toBe(true);
   });
-  it('preserves manual steering and object use in a safe part of the road', () => {
+  it.each(Object.keys(itemNames) as (keyof typeof itemNames)[])(
+    'activates %s immediately on pickup without user input',
+    (item) => {
+      const race = solo();
+      const r = race.racers[0];
+      const box = { t: r.lastT, pos: r.pos.clone(), cooldown: 0 };
+      race.pickups = [box];
+      race.obstacles = [];
+      vi.spyOn(race, 'chooseItem').mockReturnValue(item);
+      const event = vi.fn();
+      race.onEvent = event;
+      const input = idleInput();
+
+      race.update(1 / 60, [input]);
+
+      expect(r.item).toBeNull();
+      expect(r.itemCooldown).toBe(0.4);
+      expect(box.cooldown).toBe(5);
+      expect(event.mock.calls.filter(([kind]) => kind === 'pickup' || kind === 'item')).toEqual([
+        ['pickup', r.id],
+        ['item', r.id, item],
+      ]);
+      expect(input).toEqual(idleInput());
+    },
+  );
+  it.each(['stun', 'knockedTime', 'itemCooldown'] as const)(
+    'keeps a collected gift during %s and activates it once allowed',
+    (blocker) => {
+      const race = solo();
+      const r = race.racers[0];
+      race.pickups = [{ t: r.lastT, pos: r.pos.clone(), cooldown: 0 }];
+      race.obstacles = [];
+      vi.spyOn(race, 'chooseItem').mockReturnValue('shield');
+      r[blocker] = 1;
+
+      race.update(1 / 60, [idleInput()]);
+      expect(r.item).toBe('shield');
+      expect(r.shield).toBe(0);
+
+      tick(race, 1.1);
+      expect(r.item).toBeNull();
+      expect(r.shield).toBeGreaterThan(6);
+    },
+  );
+  it('keeps gift activation manual for players without child mode', () => {
+    const race = solo();
+    const r = race.racers[0];
+    r.config = { ...r.config, childMode: false };
+    race.pickups = [{ t: r.lastT, pos: r.pos.clone(), cooldown: 0 }];
+    race.obstacles = [];
+    vi.spyOn(race, 'chooseItem').mockReturnValue('shield');
+
+    tick(race, 0.5);
+    expect(r.item).toBe('shield');
+    expect(r.shield).toBe(0);
+    race.update(1 / 60, [{ ...idleInput(), use: true }]);
+    expect(r.item).toBeNull();
+    expect(r.shield).toBeGreaterThan(0);
+  });
+  it('preserves manual steering and accepts the object button in a safe part of the road', () => {
     const race = solo();
     const r = race.racers[0];
     r.pos.copy(race.track.at(0.5));
@@ -56,13 +116,16 @@ describe('per-player child assistance', () => {
   it('respects stun and finish states', () => {
     const race = solo();
     const r = race.racers[0];
+    r.item = 'shield';
     r.stun = 2;
     tick(race, 1);
     expect(r.speed).toBe(0);
+    expect(r.item).toBe('shield');
     r.stun = 0;
     r.finished = true;
     tick(race, 1);
     expect(r.speed).toBe(0);
+    expect(r.item).toBe('shield');
   });
   it.each([0, 1, 2, 3, 4])(
     'does not follow circuit %i automatically before touching an edge',

@@ -4,7 +4,73 @@ const player = { character: 0, kart: 0, device: 'keyboard' };
 function tick(race: Race, seconds: number) {
   for (let i = 0; i < seconds * 60; i++) race.update(1 / 60, [idleInput()]);
 }
+function approachFinish(race: Race, id: number) {
+  const racer = race.racers[id];
+  const t = 0.9999;
+  racer.pos.copy(race.track.at(t));
+  const tangent = race.track.tangent(t);
+  racer.heading = Math.atan2(tangent.x, tangent.z);
+  racer.lastT = t;
+  racer.progress = 2 + t;
+  racer.checkpoint = 23;
+  racer.lap = 2;
+  racer.speed = 20;
+}
 describe('arcade simulation', () => {
+  it.each([false, true])(
+    'stops immediately at the third lap finish (child mode: %s)',
+    (childMode) => {
+      const race = new Race(0, [{ ...player, childMode }, player]);
+      race.countdown = 0;
+      approachFinish(race, 0);
+      const racer = race.racers[0];
+      racer.boost = 2;
+      const events: string[] = [];
+      race.onEvent = (kind, id) => {
+        if (id === 0) events.push(kind);
+      };
+      race.update(1 / 60, [{ ...idleInput(), throttle: 1 }]);
+      expect(racer.finished).toBe(true);
+      expect(racer.lap).toBe(3);
+      expect(racer.speed).toBe(0);
+      expect(racer.boost).toBe(0);
+      expect(race.finished).toBe(false);
+      const position = racer.pos.clone();
+      const heading = racer.heading;
+      const finishTime = racer.finishTime;
+      racer.item = 'turbo';
+      for (let i = 0; i < 120; i++)
+        race.update(1 / 60, [{ throttle: 1, brake: 1, steer: 1, use: true }]);
+      expect(racer.pos.equals(position)).toBe(true);
+      expect(racer.heading).toBe(heading);
+      expect(racer.speed).toBe(0);
+      expect(racer.item).toBe('turbo');
+      expect(racer.finishTime).toBe(finishTime);
+      expect(events.filter((kind) => kind === 'finish')).toHaveLength(1);
+    },
+  );
+  it('waits for the last human beyond 45 seconds, then ends without waiting for bots', () => {
+    const race = new Race(0, [player, player]);
+    race.countdown = 0;
+    approachFinish(race, 0);
+    race.update(1 / 60, [idleInput()]);
+    expect(race.racers[0].finished).toBe(true);
+    tick(race, 46);
+    expect(race.finished).toBe(false);
+    approachFinish(race, 1);
+    race.update(1 / 60, [idleInput(), idleInput()]);
+    expect(race.racers[1].finished).toBe(true);
+    expect(race.racers.some((r) => !r.human && !r.finished)).toBe(true);
+    expect(race.finished).toBe(true);
+  });
+  it('ends a solo race immediately when the human finishes', () => {
+    const race = new Race(0, [player]);
+    race.countdown = 0;
+    approachFinish(race, 0);
+    race.update(1 / 60, [idleInput()]);
+    expect(race.racers[0].finished).toBe(true);
+    expect(race.finished).toBe(true);
+  });
   it.each([0, Math.PI / 2, Math.PI, -Math.PI / 2])(
     'steers left and right relative to the driver at heading %f',
     (heading) => {

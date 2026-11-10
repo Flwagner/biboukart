@@ -88,7 +88,6 @@ export class Race {
   elapsed = 0;
   countdown = 3.5;
   finished = false;
-  finishDeadline = Infinity;
   seed = 12345;
   onEvent: (kind: string, racer: number, item?: Item) => void = () => {};
   constructor(
@@ -378,6 +377,11 @@ export class Race {
     for (const box of this.pickups) box.cooldown = Math.max(0, box.cooldown - dt);
     for (const r of this.racers) {
       r.previous.copy(r.pos);
+      if (r.finished) {
+        r.speed = 0;
+        r.boost = 0;
+        continue;
+      }
       const wasKnocked = r.knockedTime > 0;
       for (const key of [
         'boost',
@@ -393,13 +397,6 @@ export class Race {
         r[key] = Math.max(0, r[key] - dt);
       r.giantScale += THREE.MathUtils.clamp((r.giant > 0 ? 2 : 1) - r.giantScale, -dt * 3, dt * 3);
       if (wasKnocked && r.knockedTime === 0) this.respawn(r);
-      if (r.finished) {
-        r.speed = Math.min(
-          r.speed * Math.exp(-dt * 2),
-          karts[r.config.kart].speed * (r.boost > 0 ? 1.5 : 1),
-        );
-        continue;
-      }
       let input =
         r.stun > 0 || r.knockedTime > 0
           ? idleInput()
@@ -412,7 +409,7 @@ export class Race {
       const spec = karts[r.config.kart];
       r.steering = input.steer;
       r.braking = THREE.MathUtils.clamp(input.brake, 0, 1);
-      if (input.use) this.use(r);
+      if (input.use || child) this.use(r);
       const near = this.track.surface(r.pos, r.route),
         off = near.distance > near.width / 2;
       const max = spec.speed * (r.boost > 0 ? 1.5 : 1) * (r.slow > 0 ? 0.5 : 1) * (off ? 0.5 : 1);
@@ -490,8 +487,14 @@ export class Race {
       if (r.checkpoint >= 24) {
         r.finished = true;
         r.finishTime = this.elapsed;
+        r.speed = 0;
+        r.steering = 0;
+        r.braking = 0;
+        r.knockback.set(0, 0, 0);
+        r.boost = 0;
+        r.wrongWay = false;
         this.onEvent('finish', r.id);
-        if (r.human) this.finishDeadline = Math.min(this.finishDeadline, this.elapsed + 45);
+        continue;
       }
       if (Math.abs(r.speed) < 1 && input.throttle > 0) r.stuck += dt;
       else r.stuck = 0;
@@ -517,6 +520,7 @@ export class Race {
             r.item = this.chooseItem(this.ranking.indexOf(r));
             box.cooldown = 5;
             this.onEvent('pickup', r.id);
+            if (child) this.use(r);
             break;
           }
       for (const t of this.boosts) {
@@ -564,7 +568,7 @@ export class Race {
         }
       }
     // Racer separation and giant knockback happen after the normal movement constraint.
-    for (const r of this.racers) this.keepChildOnRoad(r, dt);
+    for (const r of this.racers) if (!r.finished) this.keepChildOnRoad(r, dt);
     for (const h of this.hazards) {
       h.ttl -= dt;
       if (h.kind === 'missile') {
@@ -588,11 +592,7 @@ export class Race {
         }
     }
     this.hazards = this.hazards.filter((h) => h.ttl > 0);
-    if (
-      this.racers.filter((r) => r.human).every((r) => r.finished) ||
-      this.elapsed >= this.finishDeadline
-    )
-      this.finished = true;
+    if (this.racers.filter((r) => r.human).every((r) => r.finished)) this.finished = true;
   }
   respawn(r: Racer) {
     const t = ((Math.max(0, r.progress) % 1) + 1) % 1;
