@@ -518,27 +518,41 @@ export class BiomeDetails {
       this.group,
       'lava-ramp',
     );
-    for (let plank = 0; plank < 7; plank++) {
-      const t = rampStart + 0.001 + plank * 0.0015,
-        p = this.track.at(t),
-        tangent = this.track.tangent(t);
-      this.box(
-        this.group,
-        plank % 2 ? '#3b312c' : '#e6d5a8',
-        [p.x, p.y + 0.13, p.z],
-        [this.track.width - 3, 0.05, 0.32],
-        plank % 2 === 0,
-      ).rotation.y = Math.atan2(tangent.x, tangent.z);
+    const warningAt = 0.4935,
+      warningP = this.track.at(warningAt),
+      warningTangent = this.track.tangent(warningAt),
+      warningNormal = new THREE.Vector3(warningTangent.z, 0, -warningTangent.x).normalize(),
+      warningOuter = new THREE.BufferGeometry(),
+      warningInner = new THREE.BufferGeometry();
+    warningOuter.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute([-1.25, 0, 0, 1.25, 0, 0, 0, 2.15, 0], 3),
+    );
+    warningInner.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute([-1.02, 0.14, 0, 1.02, 0.14, 0, 0, 1.9, 0], 3),
+    );
+    warningOuter.computeVertexNormals();
+    warningInner.computeVertexNormals();
+    for (const side of [-1, 1]) {
+      const warning = new THREE.Group();
+      warning.name = 'lava-warning';
+      warning.position
+        .copy(warningP)
+        .addScaledVector(warningNormal, side * (this.track.width / 2 + 2.4));
+      warning.position.y = this.track.terrainHeight(warning.position);
+      warning.rotation.y = Math.atan2(warningTangent.x, warningTangent.z) + Math.PI;
+      this.box(warning, '#3b312c', [0, 1.25, 0], [0.18, 2.5, 0.18]);
+      const border = new THREE.Mesh(warningOuter, this.material('#221b18'));
+      border.position.set(0, 2.4, -0.02);
+      warning.add(border);
+      const face = new THREE.Mesh(warningInner, this.material('#f6bd42'));
+      face.position.set(0, 2.4, 0);
+      warning.add(face);
+      this.box(warning, '#221b18', [0, 3.28, 0.05], [0.16, 0.7, 0.06]);
+      this.box(warning, '#221b18', [0, 2.78, 0.05], [0.16, 0.16, 0.06]);
+      this.group.add(warning);
     }
-    const lip = this.track.at(rampEnd),
-      lipTangent = this.track.tangent(rampEnd);
-    this.box(
-      this.group,
-      '#f6bd42',
-      [lip.x, lip.y + 0.16, lip.z],
-      [this.track.width - 2, 0.12, 0.55],
-      true,
-    ).rotation.y = Math.atan2(lipTangent.x, lipTangent.z);
     for (let step = 0; step <= 6; step++) {
       const t = rampStart + ((rampEnd - rampStart) * step) / 6,
         p = this.track.at(t),

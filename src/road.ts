@@ -24,7 +24,7 @@ export function createRoadGeometry(track: Track) {
       track.index === 6
         ? [new THREE.Color('#79e7ff'), new THREE.Color('#9a86e8')]
         : track.index === 7
-          ? [new THREE.Color('#e6d5a8'), new THREE.Color('#d98d5a')]
+          ? [new THREE.Color('#e6d5a8'), new THREE.Color('#3b312c')]
           : [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
     white = new THREE.Color('#d6d5c5');
   const segments = 512;

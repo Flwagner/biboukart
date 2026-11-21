@@ -108,6 +108,7 @@ describe('art direction throughout the game', () => {
     expect(art.animated.getObjectByName('lava-lake')).toBeInstanceOf(THREE.Mesh);
     expect(art.group.getObjectByName('lava-ramp')).toBeInstanceOf(THREE.Mesh);
     expect(art.group.getObjectByName('lava-bank')).toBeInstanceOf(THREE.Mesh);
+    expect(art.group.getObjectByName('lava-warning')).toBeInstanceOf(THREE.Group);
     expect(art.footprints.some((footprint) => footprint.kind === 'volcano')).toBe(true);
     expect(
       art.footprints.filter((footprint) => footprint.kind === 'jungle-grove').length,
