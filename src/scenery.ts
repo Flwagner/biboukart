@@ -375,7 +375,8 @@ export function scenery(track: Track) {
       if (object instanceof THREE.Mesh) object.castShadow = true;
     });
   // Each full-width fork has an identifiable destination rather than empty parallel asphalt.
-  for (let i = 0; i < 8; i++) {
+  // The house builds its own interior landmarks in house.ts.
+  for (let i = 0; track.index !== 5 && i < 8; i++) {
     const u = 0.25 + Math.floor(i / 2) * 0.16;
     const p = location(u, (i % 2 ? 1 : -1) * 19, 7, 'alternative');
     const landmark = new THREE.Group();
@@ -455,6 +456,32 @@ export function obstacleModel(obstacle: Obstacle) {
       material(obstacle.kind === 'snowball' ? '#f4fbff' : '#a96243'),
     );
     group.add(rock);
+  } else if (obstacle.kind === 'jam') {
+    const glass = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.5, 1.5, 3.4, 14),
+      material('#d7e5e1'),
+    );
+    glass.rotation.z = Math.PI / 2;
+    glass.position.y = 1.6;
+    group.add(glass);
+    const jam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.28, 1.28, 2.5, 14),
+      material('#b23a48'),
+    );
+    jam.rotation.z = Math.PI / 2;
+    jam.position.y = 1.6;
+    group.add(jam);
+    for (const side of [-1, 1]) {
+      const lid = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.62, 1.62, 0.45, 14),
+        material('#c9a24a'),
+      );
+      lid.rotation.z = Math.PI / 2;
+      lid.position.set(side * 1.9, 1.6, 0);
+      group.add(lid);
+    }
+    block('#f5e7c8', [2.2, 1.6, 0.18], [0, 1.6, 1.42]);
+    block('#b23a48', [1.6, 0.35, 0.22], [0, 1.6, 1.46]);
   } else {
     const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), material('#e88e6a'));
     shell.scale.y = 0.5;

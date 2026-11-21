@@ -7,8 +7,9 @@ Un jeu de karting 3D stylisé original, entièrement dans le navigateur. **Three
 - **PC : 1 à 4 humains** sur un même appareil, clavier partagé et/ou manettes.
 - **Mobile : 1 à 2 humains**, commandes tactiles séparées, écran paysage.
 - 8 personnages et 8 karts aux silhouettes et caractéristiques différentes.
-- Direction artistique « jouets de collection » sur les cinq circuits, huit pilotes et huit karts : carrosseries sculptées, peinture satinée, pneus mats, métal et visages expressifs. Prairie conservée comme référence ; Canyon stratifié, Archipel à eau animée et palmiers courbes, Col aux chalets fumants et sommets sculptés, Boulevard aux vitrines, balcons et jardins urbains. Chaque univers possède sa propre ambiance lumineuse.
-- 5 circuits de 969 à 1 188 mètres : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons et Boulevard des bibous. Virages gauche/droite, enchaînements en S, lignes droites, relief, raccourci technique et véritable embranchement sur chaque circuit.
+- Direction artistique « jouets de collection » sur les six circuits, huit pilotes et huit karts : carrosseries sculptées, peinture satinée, pneus mats, métal et visages expressifs. Prairie conservée comme référence ; Canyon stratifié, Archipel à eau animée et palmiers courbes, Col aux chalets fumants et sommets sculptés, Boulevard aux vitrines, balcons et jardins urbains, Maison des miettes aux meubles géants et parquet texturé. Chaque univers possède sa propre ambiance lumineuse.
+- 6 circuits de 969 à 1 188 mètres : Prairie des lucioles, Canyon vermeil, Archipel azur, Col des flocons, Boulevard des bibous et La Maison des miettes. Virages gauche/droite, enchaînements en S, lignes droites, relief, raccourci technique et véritable embranchement sur chaque circuit.
+- **La Maison des miettes** : un circuit miniature dans une maison géante. Départ sur la table du petit-déjeuner (biscottes, pots de confiture, mug, beurre), rampe de livres, couloir, WC (cuvette, lavabo, rouleau, canard), chambre (lit, lampe de chevet, pantoufles, coffre à jouets) et salon (canapé, table basse, télévision animée, plante). Panneaux de pièces au-dessus de la piste, parquet procédural, murs et tableaux, pot de confiture qui roule comme obstacle.
 - Courses de 3 tours à 6 concurrents ; les bots complètent la grille.
 - Mini-carte avec les six concurrents, notification « Dernier tour ! », roues et volant noir animés, phares blanc chaud à l'avant et feux rouges intensifiés au freinage à l'arrière, réactions des pilotes et podium 3D.
 - Moulins, arches rocheuses et palmiers ; terrain vallonné, bosses permettant de vrais sauts, obstacles mobiles annoncés et raccourcis étroits éloignés du tracé principal.
@@ -27,13 +28,14 @@ Le garage permet de choisir les pilotes, karts et contrôleurs, puis un circuit.
 
 Les tracés principaux mesurent environ deux fois la longueur des anciens circuits. Chaque circuit propose **deux routes à une bifurcation**, puis une jonction commune, en plus de son raccourci étroit :
 
-| Circuit              | Longueur principale | Route alternative                     |
-| -------------------- | ------------------: | ------------------------------------- |
-| Prairie des lucioles |               969 m | Le verger et ses arbres fruitiers     |
-| Canyon vermeil       |             1 136 m | La corniche et ses rochers stratifiés |
-| Archipel azur        |             1 000 m | La palmeraie                          |
-| Col des flocons      |             1 119 m | Le village aux chalets enneigés       |
-| Boulevard des bibous |             1 188 m | Les petites rues et leurs maisons     |
+| Circuit               | Longueur principale | Route alternative                     |
+| --------------------- | ------------------: | ------------------------------------- |
+| Prairie des lucioles  |               969 m | Le verger et ses arbres fruitiers     |
+| Canyon vermeil        |             1 136 m | La corniche et ses rochers stratifiés |
+| Archipel azur         |             1 000 m | La palmeraie                          |
+| Col des flocons       |             1 119 m | Le village aux chalets enneigés       |
+| Boulevard des bibous  |             1 188 m | Les petites rues et leurs maisons     |
+| La Maison des miettes |             1 001 m | La chambre et ses jouets              |
 
 La route alternative est presque aussi large que la piste principale : ce n'est pas un raccourci caché. Elle est un peu plus longue et offre deux cadeaux supplémentaires ; rester sur le circuit principal privilégie le temps de parcours. Des panneaux bleu-vert annoncent ce choix, les panneaux violets indiquent le raccourci technique. La mini-carte montre les routes normales en trait plein et le raccourci en pointillés. Les bots varient leur choix selon le pilote et le tour, sans changer de décision au milieu d'une bifurcation. Le mode enfant laisse emprunter toutes ces routes.
 

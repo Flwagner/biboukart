@@ -32,36 +32,39 @@ function release(...roots: THREE.Object3D[]) {
 
 describe('art direction throughout the game', () => {
   it('preserves the approved Prairie lighting and gives every other biome its own atmosphere', () => {
-    expect(circuitAtmospheres).toHaveLength(5);
+    expect(circuitAtmospheres).toHaveLength(6);
     expect(circuitAtmospheres[0]).toEqual({
       sun: '#fff0d2',
       skyLight: '#d5eaff',
       bounce: '#617b52',
       exposure: 1.15,
     });
-    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(5);
+    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(6);
   });
-  it.each([1, 2, 3, 4])('keeps the whole new decor outside both routes on circuit %i', (index) => {
-    const track = new Track(index);
-    const before = track.samples.map((point) => point.toArray());
-    const art = new BiomeDetails(track);
-    expect(art.footprints.length).toBeGreaterThan(15);
-    for (const footprint of art.footprints) {
-      const p = new THREE.Vector3(footprint.x, 0, footprint.z);
-      expect(track.overlapsAnyRoad(p, footprint.radius + 2.9), footprint.kind).toBe(false);
-    }
-    expect(track.samples.map((point) => point.toArray())).toEqual(before);
-    const materialIds = new Set<string>();
-    for (const root of [art.group, art.animated])
-      root.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const positions = object.geometry.getAttribute('position');
-        expect(Array.from(positions.array).every(Number.isFinite)).toBe(true);
-        materialIds.add((object.material as THREE.Material).uuid);
-      });
-    expect(materialIds.size).toBeLessThan(40);
-    release(art.group, art.animated);
-  });
+  it.each([1, 2, 3, 4, 5])(
+    'keeps the whole new decor outside both routes on circuit %i',
+    (index) => {
+      const track = new Track(index);
+      const before = track.samples.map((point) => point.toArray());
+      const art = new BiomeDetails(track);
+      expect(art.footprints.length).toBeGreaterThan(15);
+      for (const footprint of art.footprints) {
+        const p = new THREE.Vector3(footprint.x, 0, footprint.z);
+        expect(track.overlapsAnyRoad(p, footprint.radius + 2.9), footprint.kind).toBe(false);
+      }
+      expect(track.samples.map((point) => point.toArray())).toEqual(before);
+      const materialIds = new Set<string>();
+      for (const root of [art.group, art.animated])
+        root.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          const positions = object.geometry.getAttribute('position');
+          expect(Array.from(positions.array).every(Number.isFinite)).toBe(true);
+          materialIds.add((object.material as THREE.Material).uuid);
+        });
+      expect(materialIds.size).toBeLessThan(40);
+      release(art.group, art.animated);
+    },
+  );
   it('animates local water and freezes ambience when given a zero simulation step', () => {
     for (const index of [1, 2, 3]) {
       const art = new BiomeDetails(new Track(index));

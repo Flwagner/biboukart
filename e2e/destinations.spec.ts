@@ -8,10 +8,10 @@ for (const [index, name] of [
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
-    await expect(page.locator('.hero-sticker')).toContainText('5 circuits');
+    await expect(page.locator('.hero-sticker')).toContainText('6 circuits');
     await page.locator('#play').click();
     await page.locator('#next').click();
-    await expect(page.locator('.track-card')).toHaveCount(5);
+    await expect(page.locator('.track-card')).toHaveCount(6);
     await page.getByRole('button', { name: new RegExp(name) }).click();
     await expect(page.locator(`[data-track="${index}"]`)).toHaveAttribute('aria-pressed', 'true');
     await page.screenshot({ path: `test-results/destination-${index}-menu.png`, fullPage: true });

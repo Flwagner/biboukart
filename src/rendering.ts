@@ -11,6 +11,7 @@ import {
   skyTexture,
   startBanner,
   toyMaterial,
+  woodFloorTexture,
 } from './art';
 import { meadowDetails } from './meadow';
 import { sculptDriver, sculptKart } from './rosterDetails';
@@ -633,7 +634,10 @@ export class Renderer {
     const terrainGeometry = createTerrainGeometry(track);
     const terrain = new THREE.Mesh(
       terrainGeometry,
-      new THREE.MeshLambertMaterial({ vertexColors: true }),
+      new THREE.MeshLambertMaterial({
+        vertexColors: true,
+        map: track.index === 5 ? woodFloorTexture() : undefined,
+      }),
     );
     terrain.receiveShadow = true;
     this.world.add(terrain);
@@ -785,6 +789,7 @@ export class Renderer {
     }
     if (track.index === 0) this.world.add(meadowDetails(track));
     for (let i = 0; i < 9; i++) {
+      if (track.index === 5) continue;
       if (track.index === 4) {
         const height = 25 + (i % 4) * 12;
         const tower = new THREE.Group();

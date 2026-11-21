@@ -1,5 +1,14 @@
 # Évolutions
 
+## La Maison des miettes — sixième circuit miniature
+
+- Nouveau circuit indépendant, ajouté sans modifier le tracé, le décor ni le comportement des cinq circuits existants. Boucle de **1 001 m** avec départ sur la table du petit-déjeuner surélevée à 11 unités, rampes de livres, parquet texturé, murs intérieurs, tableaux et panneaux de pièces.
+- Parcours : cuisine/table (biscottes, pots de confiture, mug, beurre, couteau), couloir (chaussures, portemanteau, tapis), WC (cuvette, chasse, rouleau, brosse, lavabo, miroir, canard), chambre (lit, couette, oreillers, table de nuit, lampe, réveil, pantoufles, cubes, coffre) et salon (canapé, coussins, table basse, télévision animée, plante, lampadaire, bibliothèque). Ambiances animées : lampe suspendue, vapeur de bouilloire et écran de télévision ; le tout figé en pause.
+- Raccourci technique « le tiroir » (158 m) et alternative large « Chambre » (312 m), deux cadeaux sur l'alternative. Nouvel obstacle mobile : un pot de confiture qui roule, avec verre, couvercle et étiquette.
+- Intégration : entrée dans `trackDefinitions`, valeurs indexées dans `Track` (relief de table, bosse de seuil, raccourci, alternative, obstacle), sixième profil de lumière, `src/house.ts` pour le décor, couleur de route et texture de parquet. Le menu affiche six cartes et « Six ambiances ».
+- Tests : matrices de géométrie, jonctions, terrain, dégagement, difficultés et courses complètes étendues à l'index 5 ; `tests/house.test.ts` vérifie la table, la continuité du relief, les 19 empreintes de meubles, les pièces, le pot de confiture et l'immobilité en pause. `e2e/house.spec.ts` couvre la carte du menu, le départ sur la table et les cinq pièces.
+- Captures : `test-results/house-menu.png`, `test-results/house-{table,hallway,wc,bedroom,living-room}.png`.
+
 ## Hors route : vitesse divisée par deux
 
 - Vitesse maximale limitée à 50 % hors asphalte, en marche avant comme en marche arrière, sur la piste principale, les alternatives et les raccourcis. Suppression du multiplicateur de 0,93 appliqué à chaque contact avec la limite extérieure, qui finissait par presque immobiliser le kart malgré l'accélération.

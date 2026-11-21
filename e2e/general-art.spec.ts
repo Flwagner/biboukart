@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-for (const index of [1, 2, 3, 4]) {
+for (const index of [1, 2, 3, 4, 5]) {
   test(`finished circuit ${index}: solo high quality and four low-quality views`, async ({
     page,
   }) => {

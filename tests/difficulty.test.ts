@@ -3,7 +3,7 @@ import { Race, idleInput } from '../src/race';
 import { karts, difficulties, type Difficulty } from '../src/config';
 const player = { character: 0, kart: 0, device: 'keyboard' };
 const matrix = (['easy', 'normal', 'hard'] as Difficulty[]).flatMap((difficulty) =>
-  [0, 1, 2, 3, 4].flatMap((track) =>
+  [0, 1, 2, 3, 4, 5].flatMap((track) =>
     [false, true].map((shortcuts) => ({ difficulty, track, shortcuts })),
   ),
 );

@@ -127,7 +127,7 @@ describe('per-player child assistance', () => {
     expect(r.speed).toBe(0);
     expect(r.item).toBe('shield');
   });
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'does not follow circuit %i automatically before touching an edge',
     (track) => {
       for (const steer of [-1, 0, 1]) {
@@ -143,7 +143,7 @@ describe('per-player child assistance', () => {
       }
     },
   );
-  it.each([0, 1, 2, 3, 4].flatMap((track) => [-1, 1].map((steer) => [track, steer])))(
+  it.each([0, 1, 2, 3, 4, 5].flatMap((track) => [-1, 1].map((steer) => [track, steer])))(
     'stays on circuit %i with steering held at %i',
     (track, steer) => {
       const race = solo(track);
@@ -237,7 +237,7 @@ describe('per-player child assistance', () => {
     expect(r.immune).toBeGreaterThan(0);
     expect(r.progress - startProgress).toBeLessThan(0.02);
   });
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'protects shortcuts and preserves jump height on circuit %i',
     (track) => {
       const race = solo(track);

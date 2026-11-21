@@ -67,6 +67,32 @@ export function asphaltTexture() {
   return texture;
 }
 
+/** Parquet planks for the giant house floor; tinted by the terrain vertex colours. */
+export function woodFloorTexture() {
+  const size = 128,
+    pixels = new Uint8Array(size * size * 4);
+  let seed = 913;
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const row = Math.floor(y / 16),
+        offset = (row % 2) * 32,
+        seam = y % 16 < 2 || (x + offset) % 64 < 2;
+      seed = (seed * 16807) % 2147483647;
+      const grain = 208 + (seed % 30),
+        shade = seam ? grain * 0.6 : grain;
+      pixels.set([shade, shade * 0.92, shade * 0.8, 255], (y * size + x) * 4);
+    }
+  const texture = new THREE.DataTexture(pixels, size, size);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(46, 46);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 let contactTexture: THREE.DataTexture | undefined;
 export function contactShadowTexture() {
   if (contactTexture) return contactTexture;

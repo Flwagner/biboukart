@@ -5,7 +5,7 @@ import { Race, idleInput } from '../src/race';
 import { minimapMarkup, mapProjection } from '../src/minimap';
 
 describe('long circuits with genuine route choices', () => {
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'route choices on circuit %i have comparable clean driving times',
     (index) => {
       const times: number[] = [];
@@ -34,7 +34,7 @@ describe('long circuits with genuine route choices', () => {
       expect(times[1] / times[0]).toBeLessThan(1.3);
     },
   );
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'circuit %i has both steering directions and a full-width alternative',
     (index) => {
       const track = new Track(index),
@@ -111,7 +111,7 @@ describe('long circuits with genuine route choices', () => {
     },
   );
 
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'alternative %i preserves progress on respawn and rejects teleportation',
     (index) => {
       const race = new Race(index, [{ character: 0, kart: 0, device: 'keyboard' }]);
@@ -133,7 +133,7 @@ describe('long circuits with genuine route choices', () => {
     },
   );
 
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'an isolated bot drives alternative %i without rescue and validates three laps',
     (index) => {
       const race = new Race(index, [
@@ -160,7 +160,7 @@ describe('long circuits with genuine route choices', () => {
     30000,
   );
 
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'all junctions on circuit %i remain open across the main road',
     (index) => {
       const track = new Track(index);

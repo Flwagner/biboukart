@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Track } from './track';
+import { buildHouse } from './house';
 
 export const circuitAtmospheres = [
   { sun: '#fff0d2', skyLight: '#d5eaff', bounce: '#617b52', exposure: 1.15 },
@@ -7,6 +8,7 @@ export const circuitAtmospheres = [
   { sun: '#fff2ce', skyLight: '#c9edff', bounce: '#6bafa4', exposure: 1.12 },
   { sun: '#ffeacb', skyLight: '#d6edff', bounce: '#8bacc4', exposure: 1.08 },
   { sun: '#ffdcba', skyLight: '#cbd7f0', bounce: '#7d8499', exposure: 1.12 },
+  { sun: '#ffe3ba', skyLight: '#f2e2c6', bounce: '#a87f57', exposure: 1.06 },
 ] as const;
 
 export interface DecorFootprint {
@@ -63,6 +65,7 @@ export class BiomeDetails {
   private drifters: { mesh: THREE.Mesh; origin: THREE.Vector3; phase: number; smoke: boolean }[] =
     [];
   private materials = new Map<string, THREE.Material>();
+  private houseUpdate: ((dt: number) => void) | null = null;
 
   constructor(private track: Track) {
     this.group.name = `biome-details-${track.index}`;
@@ -72,7 +75,11 @@ export class BiomeDetails {
     if (track.index === 2) this.archipelago();
     if (track.index === 3) this.mountain();
     if (track.index === 4) this.city();
-    if (track.index > 0) this.clouds();
+    if (track.index === 5) this.house();
+    if (track.index > 0 && track.index !== 5) this.clouds();
+  }
+  private house() {
+    this.houseUpdate = buildHouse(this.track, this.group, this.animated, this.footprints);
   }
   private material(color: string, lit = false) {
     const key = `${color}:${lit}`;
@@ -303,6 +310,7 @@ export class BiomeDetails {
   }
   update(dt: number) {
     this.clock += dt;
+    this.houseUpdate?.(dt);
     if (this.water) this.water.offset.set(this.clock * 0.006, Math.sin(this.clock * 0.25) * 0.015);
     for (const { mesh, origin, phase, smoke } of this.drifters) {
       const age = (this.clock * (smoke ? 0.18 : 0.1) + phase) % 1;

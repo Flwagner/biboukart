@@ -5,7 +5,7 @@ import { karts } from '../src/config';
 import type { Route } from '../src/track';
 
 const routes: Route[] = ['main', 'shortcut', 'alternative'];
-const cases = [0, 1, 2, 3, 4].flatMap((track) => routes.map((route) => ({ track, route })));
+const cases = [0, 1, 2, 3, 4, 5].flatMap((track) => routes.map((route) => ({ track, route })));
 const accelerate = { ...idleInput(), throttle: 1 };
 
 function setup(track = 0, route: Route = 'main', side = 1) {

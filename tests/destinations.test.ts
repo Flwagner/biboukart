@@ -7,18 +7,18 @@ import { loadSelection } from '../src/storage';
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('mountain and city destinations', () => {
-  it('offers five distinct circuits with previews based on their real curves', () => {
-    expect(trackDefinitions).toHaveLength(5);
+describe('mountain, city and house destinations', () => {
+  it('offers six distinct circuits with previews based on their real curves', () => {
+    expect(trackDefinitions).toHaveLength(6);
     const paths = trackDefinitions.map((_, index) => trackPreviewPath(index));
-    expect(new Set(paths).size).toBe(5);
+    expect(new Set(paths).size).toBe(6);
     paths.forEach((path) => {
       expect(path).toMatch(/^M.* Z$/);
       expect(path).not.toMatch(/NaN|Infinity/);
     });
   });
 
-  it.each([3, 4])('restores saved destination %i', (track) => {
+  it.each([3, 4, 5])('restores saved destination %i', (track) => {
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
     vi.stubGlobal('localStorage', {
       getItem: () =>
@@ -31,12 +31,12 @@ describe('mountain and city destinations', () => {
     expect(loadSelection()?.track).toBe(track);
   });
 
-  it.each([0, 1, 2, 3, 4])(
+  it.each([0, 1, 2, 3, 4, 5])(
     'keeps scenery footprints clear of every road on circuit %i',
     (index) => {
       const track = new Track(index),
         decor = scenery(track);
-      if (index >= 3) {
+      if (index === 3 || index === 4) {
         expect(decor.group.name).toBe(index === 3 ? 'snow-scenery' : 'city-scenery');
         expect(decor.group.children.length).toBeGreaterThan(60);
       }
