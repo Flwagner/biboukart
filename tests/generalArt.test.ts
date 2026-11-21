@@ -32,16 +32,16 @@ function release(...roots: THREE.Object3D[]) {
 
 describe('art direction throughout the game', () => {
   it('preserves the approved Prairie lighting and gives every other biome its own atmosphere', () => {
-    expect(circuitAtmospheres).toHaveLength(6);
+    expect(circuitAtmospheres).toHaveLength(7);
     expect(circuitAtmospheres[0]).toEqual({
       sun: '#fff0d2',
       skyLight: '#d5eaff',
       bounce: '#617b52',
       exposure: 1.15,
     });
-    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(6);
+    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(7);
   });
-  it.each([1, 2, 3, 4, 5])(
+  it.each([1, 2, 3, 4, 5, 6])(
     'keeps the whole new decor outside both routes on circuit %i',
     (index) => {
       const track = new Track(index);
@@ -66,7 +66,7 @@ describe('art direction throughout the game', () => {
     },
   );
   it('animates local water and freezes ambience when given a zero simulation step', () => {
-    for (const index of [1, 2, 3]) {
+    for (const index of [1, 2, 3, 6]) {
       const art = new BiomeDetails(new Track(index));
       art.update(0.25);
       const transforms = art.animated.children.map((mesh) => mesh.position.toArray());
@@ -85,6 +85,20 @@ describe('art direction throughout the game', () => {
       }
       release(art.group, art.animated);
     }
+  });
+  it('fills the space circuit with stars, planets and rockets orbiting the track', () => {
+    const art = new BiomeDetails(new Track(6));
+    expect(art.group.getObjectByName('space-stars')).toBeInstanceOf(THREE.Points);
+    expect(art.group.getObjectByName('space-sun')).toBeInstanceOf(THREE.Group);
+    const rockets = art.animated.children.filter((object) => object.name === 'space-rocket');
+    expect(rockets).toHaveLength(3);
+    const before = rockets.map((rocket) => rocket.position.toArray());
+    art.update(1.5);
+    const after = rockets.map((rocket) => rocket.position.toArray());
+    after.forEach((position, index) => expect(position).not.toEqual(before[index]));
+    art.update(0);
+    expect(rockets.map((rocket) => rocket.position.toArray())).toEqual(after);
+    release(art.group, art.animated);
   });
   it('uses curved and tapered palm fronds with valid indexed normals', () => {
     const geometry = palmFrondGeometry();

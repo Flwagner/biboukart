@@ -3,15 +3,16 @@ import { test, expect } from '@playwright/test';
 for (const [index, name] of [
   [3, 'Col des flocons'],
   [4, 'Boulevard des bibous'],
+  [6, 'Orbite des étoiles'],
 ] as const) {
   test(`${name}: menu, themed scenery and saved selection`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
-    await expect(page.locator('.hero-sticker')).toContainText('6 circuits');
+    await expect(page.locator('.hero-sticker')).toContainText('7 circuits');
     await page.locator('#play').click();
     await page.locator('#next').click();
-    await expect(page.locator('.track-card')).toHaveCount(6);
+    await expect(page.locator('.track-card')).toHaveCount(7);
     await page.getByRole('button', { name: new RegExp(name) }).click();
     await expect(page.locator(`[data-track="${index}"]`)).toHaveAttribute('aria-pressed', 'true');
     await page.screenshot({ path: `test-results/destination-${index}-menu.png`, fullPage: true });

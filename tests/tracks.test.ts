@@ -31,7 +31,7 @@ describe('relief, shortcuts and mobile obstacles', () => {
     expect(r.progress).toBeLessThan(progress);
     expect(r.checkpoint).toBe(checkpoint);
   });
-  it.each([0, 1, 2, 3, 4, 5])(
+  it.each([0, 1, 2, 3, 4, 5, 6])(
     'track %i has continuous relief, narrower shorter alternative and valid joins',
     (index) => {
       const track = new Track(index),
@@ -63,7 +63,7 @@ describe('relief, shortcuts and mobile obstacles', () => {
       });
     },
   );
-  it.each([0, 1, 2, 3, 4, 5])(
+  it.each([0, 1, 2, 3, 4, 5, 6])(
     'six drivers finish track %i with shortcuts, grounded contact and valid flight',
     (index) => {
       const race = new Race(index, [player]);
@@ -99,7 +99,7 @@ describe('relief, shortcuts and mobile obstacles', () => {
     },
     30000,
   );
-  it.each([0, 1, 2, 3, 4, 5])(
+  it.each([0, 1, 2, 3, 4, 5, 6])(
     'an isolated driver completes all three shortcut traversals on track %i',
     (index) => {
       const race = new Race(index, [player]);

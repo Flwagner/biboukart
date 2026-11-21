@@ -13,10 +13,15 @@ export function createRoadGeometry(track: Track) {
           ? '#4c5664'
           : track.index === 5
             ? '#6f5a48'
-            : '#59636c',
+            : track.index === 6
+              ? '#282d43'
+              : '#59636c',
     ),
     groundColor = new THREE.Color(def.ground),
-    edgeColors = [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
+    edgeColors =
+      track.index === 6
+        ? [new THREE.Color('#79e7ff'), new THREE.Color('#9a86e8')]
+        : [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
     white = new THREE.Color('#d6d5c5');
   const segments = 512;
   // Boost strips are painted into the road itself: a separate decal kept

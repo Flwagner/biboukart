@@ -47,7 +47,7 @@ export function scenery(track: Track) {
     if (!materials.has(color))
       materials.set(
         color,
-        ['#f8e3aa', '#fff1bb', '#ffe2a3'].includes(color)
+        ['#f8e3aa', '#fff1bb', '#ffe2a3', '#79e7ff'].includes(color)
           ? new THREE.MeshBasicMaterial({ color, toneMapped: false })
           : new THREE.MeshLambertMaterial({ color }),
       );
@@ -363,6 +363,36 @@ export function scenery(track: Track) {
       }
       group.add(lamp);
     }
+  } else if (track.index === 6) {
+    group.name = 'space-scenery';
+    for (let i = 0; i < 34; i++) {
+      const p = location(i / 34, (i % 2 ? 1 : -1) * (15 + (i % 4) * 4.5), 5);
+      const cluster = new THREE.Group();
+      cluster.position.copy(p);
+      cluster.rotation.y = i * 0.7;
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(1.6 + (i % 3) * 0.5, 0),
+        material(['#20253c', '#2a304b', '#343b5c'][i % 3]),
+      );
+      rock.position.y = 1.1;
+      rock.rotation.set(i * 0.3, i * 0.5, i * 0.2);
+      cluster.add(rock);
+      if (i % 3 === 0) {
+        const shard = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), material('#79e7ff'));
+        shard.position.set(1.7, 1.5, 0.5);
+        shard.scale.set(0.25, 0.9, 0.25);
+        cluster.add(shard);
+      }
+      group.add(cluster);
+    }
+    for (let i = 0; i < 18; i++) {
+      const p = location(i / 18, (i % 2 ? 1 : -1) * (track.width / 2 + 2), 1.5),
+        buoy = new THREE.Group();
+      buoy.position.copy(p);
+      add(buoy, '#323b63', [0.16, 3.2, 0.16], [0, 1.6, 0]);
+      add(buoy, '#79e7ff', [0.42, 0.42, 0.42], [0, 3.35, 0]);
+      group.add(buoy);
+    }
   }
   group.traverse((object) => {
     if (object instanceof THREE.Mesh) {
@@ -416,6 +446,26 @@ export function scenery(track: Track) {
         rock.position.y = 0.9 + layer * 1.7;
         landmark.add(rock);
       }
+    } else if (track.index === 6) {
+      add(landmark, '#252c49', [5.4, 1.2, 5.4], [0, 0.6, 0]);
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(2.5, 16, 9, 0, Math.PI * 2, 0, Math.PI / 2),
+        material('#4b5787'),
+      );
+      dome.position.y = 1.2;
+      landmark.add(dome);
+      add(landmark, '#3b4a7a', [0.15, 5.4, 0.15], [0, 4, -1.5]);
+      const dish = new THREE.Mesh(
+        new THREE.ConeGeometry(1.9, 0.55, 16, 1, true),
+        material('#92a6dc'),
+      );
+      dish.position.set(0, 6.8, -1.5);
+      dish.rotation.x = 2.35;
+      landmark.add(dish);
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), material('#79e7ff'));
+      beacon.position.set(0, 7.1, -1.5);
+      landmark.add(beacon);
+      for (const side of [-1, 1]) add(landmark, '#56689f', [1.3, 1.5, 0.16], [side * 3, 1.5, 1.4]);
     } else {
       add(landmark, track.index === 3 ? '#ad815f' : '#d6b49a', [6, 4, 5], [0, 2, 0]);
       for (const side of [-1, 1]) {
@@ -450,12 +500,32 @@ export function obstacleModel(obstacle: Obstacle) {
     block('#f6dfb3', [3.6, 0.65, 0.55], [0, 0.9, 0]);
     for (const x of [-1.2, 0, 1.2]) block('#cc6f59', [0.4, 0.7, 0.6], [x, 0.9, 0]);
     for (const x of [-1.5, 1.5]) block('#4b646a', [0.25, 0.6, 0.35], [x, 0.3, 0]);
-  } else if (obstacle.kind === 'rock' || obstacle.kind === 'snowball') {
+  } else if (
+    obstacle.kind === 'rock' ||
+    obstacle.kind === 'snowball' ||
+    obstacle.kind === 'asteroid'
+  ) {
     const rock = new THREE.Mesh(
       new THREE.DodecahedronGeometry(1.6, 0),
-      material(obstacle.kind === 'snowball' ? '#f4fbff' : '#a96243'),
+      material(
+        obstacle.kind === 'snowball'
+          ? '#f4fbff'
+          : obstacle.kind === 'asteroid'
+            ? '#343a58'
+            : '#a96243',
+      ),
     );
     group.add(rock);
+    if (obstacle.kind === 'asteroid')
+      for (let shard = 0; shard < 3; shard++) {
+        const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 0), material('#79e7ff'));
+        crystal.position.set(
+          Math.sin(shard * 2.1) * 1.1,
+          0.9 + shard * 0.45,
+          Math.cos(shard * 2.1) * 1.1,
+        );
+        group.add(crystal);
+      }
   } else if (obstacle.kind === 'jam') {
     const glass = new THREE.Mesh(
       new THREE.CylinderGeometry(1.5, 1.5, 3.4, 14),

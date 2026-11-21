@@ -9,6 +9,7 @@ export const circuitAtmospheres = [
   { sun: '#ffeacb', skyLight: '#d6edff', bounce: '#8bacc4', exposure: 1.08 },
   { sun: '#ffdcba', skyLight: '#cbd7f0', bounce: '#7d8499', exposure: 1.12 },
   { sun: '#ffe3ba', skyLight: '#f2e2c6', bounce: '#a87f57', exposure: 1.06 },
+  { sun: '#b9c6ff', skyLight: '#39457a', bounce: '#111426', exposure: 0.92 },
 ] as const;
 
 export interface DecorFootprint {
@@ -64,6 +65,13 @@ export class BiomeDetails {
   private water: THREE.DataTexture | null = null;
   private drifters: { mesh: THREE.Mesh; origin: THREE.Vector3; phase: number; smoke: boolean }[] =
     [];
+  private orbiters: {
+    mesh: THREE.Group;
+    radius: number;
+    height: number;
+    speed: number;
+    phase: number;
+  }[] = [];
   private materials = new Map<string, THREE.Material>();
   private houseUpdate: ((dt: number) => void) | null = null;
 
@@ -76,10 +84,196 @@ export class BiomeDetails {
     if (track.index === 3) this.mountain();
     if (track.index === 4) this.city();
     if (track.index === 5) this.house();
-    if (track.index > 0 && track.index !== 5) this.clouds();
+    if (track.index === 6) this.space();
+    if (track.index > 0 && track.index !== 5 && track.index !== 6) this.clouds();
   }
   private house() {
     this.houseUpdate = buildHouse(this.track, this.group, this.animated, this.footprints);
+  }
+  private space() {
+    // A deterministic star dome, brighter above the horizon and deep into the distance.
+    const starCount = 760,
+      positions = new Float32Array(starCount * 3);
+    let seed = 417;
+    const random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    for (let i = 0; i < starCount; i++) {
+      const angle = random() * Math.PI * 2,
+        height = 0.04 + random() * 0.96,
+        radius = 290 + random() * 90,
+        ring = Math.sqrt(1 - height * height);
+      positions[i * 3] = Math.cos(angle) * ring * radius;
+      positions[i * 3 + 1] = height * radius;
+      positions[i * 3 + 2] = Math.sin(angle) * ring * radius;
+    }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const stars = new THREE.Points(
+      starGeometry,
+      new THREE.PointsMaterial({
+        color: '#eaf2ff',
+        size: 1.25,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        fog: false,
+        toneMapped: false,
+      }),
+    );
+    stars.name = 'space-stars';
+    stars.frustumCulled = false;
+    this.group.add(stars);
+    const sun = new THREE.Group();
+    sun.name = 'space-sun';
+    sun.position.set(-250, 315, 165);
+    sun.add(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(16, 20, 14),
+        new THREE.MeshBasicMaterial({ color: '#fff4c9', toneMapped: false, fog: false }),
+      ),
+    );
+    for (const [radius, opacity] of [
+      [27, 0.25],
+      [40, 0.09],
+    ] as const) {
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 18, 12),
+        new THREE.MeshBasicMaterial({
+          color: '#ffad4d',
+          transparent: true,
+          opacity,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+          fog: false,
+        }),
+      );
+      sun.add(halo);
+    }
+    this.group.add(sun);
+    const planet = (
+      position: [number, number, number],
+      radius: number,
+      color: string,
+      ringed = false,
+    ) => {
+      const body = new THREE.Group();
+      body.position.set(...position);
+      body.add(
+        new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 20, 14),
+          new THREE.MeshBasicMaterial({ color, toneMapped: false, fog: false }),
+        ),
+      );
+      const band = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.01, radius * 0.045, 6, 40),
+        new THREE.MeshBasicMaterial({
+          color: '#f1eaff',
+          transparent: true,
+          opacity: 0.35,
+          depthWrite: false,
+          toneMapped: false,
+          fog: false,
+        }),
+      );
+      body.add(band);
+      if (ringed) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(radius * 1.35, radius * 2.05, 42),
+          new THREE.MeshBasicMaterial({
+            color: '#b7c5ee',
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            toneMapped: false,
+            fog: false,
+          }),
+        );
+        ring.rotation.set(Math.PI / 2, 0, 0.35);
+        body.add(ring);
+      }
+      this.group.add(body);
+    };
+    planet([-300, 120, -210], 18, '#8d7cd8', true);
+    planet([265, 170, -230], 13, '#61c9c5');
+    planet([235, 100, 270], 10, '#e6a36f');
+    for (let i = 0; i < 24; i++) {
+      const site = this.site(
+        (i + 0.35) / 24,
+        (i % 2 ? 1 : -1) * (20 + (i % 4) * 3),
+        5.5,
+        'asteroid',
+      );
+      for (let j = 0; j < 3; j++) {
+        const rock = this.part(
+          site,
+          new THREE.DodecahedronGeometry(1, 0),
+          ['#262b45', '#313753', '#1d2238'][j],
+          [Math.sin(i + j * 2) * 1.4, 0.9 + j * 0.35, Math.cos(i * 1.7 + j) * 1.2],
+          [2.1 - j * 0.4, 1.6 + j * 0.25, 1.8 - j * 0.25],
+        );
+        rock.rotation.set(i * 0.4 + j, i * 0.7, j * 0.5);
+      }
+      const crystal = this.part(
+        site,
+        new THREE.OctahedronGeometry(1, 0),
+        '#79e7ff',
+        [1.8, 1.8, 0.5],
+        [0.28, 1, 0.28],
+        true,
+      );
+      crystal.rotation.z = 0.2;
+    }
+    this.rocket(95, 26, 0.15, 0, '#cdd8ff');
+    this.rocket(140, 42, 0.1, 2.2, '#9fd8e9');
+    this.rocket(185, 58, 0.065, 4.1, '#e7b4d6');
+  }
+  private rocket(radius: number, height: number, speed: number, phase: number, color: string) {
+    const rocket = new THREE.Group();
+    rocket.name = 'space-rocket';
+    const body = this.part(
+      rocket,
+      new THREE.CylinderGeometry(0.65, 0.9, 4.4, 10),
+      color,
+      [0, 0, 0],
+      [1, 1, 1],
+    );
+    body.rotation.x = Math.PI / 2;
+    const nose = this.part(
+      rocket,
+      new THREE.ConeGeometry(0.65, 1.5, 10),
+      '#dfe8ff',
+      [0, 0, 2.95],
+      [1, 1, 1],
+    );
+    nose.rotation.x = Math.PI / 2;
+    for (const side of [-1, 1]) {
+      const fin = this.part(
+        rocket,
+        new THREE.BoxGeometry(1, 0.12, 1.1),
+        color,
+        [side * 0.75, 0, -1.55],
+        [1, 1, 1],
+      );
+      fin.rotation.z = side * 0.35;
+    }
+    const flame = this.part(
+      rocket,
+      new THREE.ConeGeometry(0.45, 1.7, 9),
+      '#ffb35c',
+      [0, 0, -3.2],
+      [1, 1, 1],
+      true,
+    );
+    flame.rotation.x = -Math.PI / 2;
+    rocket.position.set(Math.cos(phase) * radius, height, Math.sin(phase) * radius);
+    rocket.rotation.y = -phase;
+    rocket.scale.setScalar(2.4);
+    this.animated.add(rocket);
+    this.orbiters.push({ mesh: rocket, radius, height, speed, phase });
   }
   private material(color: string, lit = false) {
     const key = `${color}:${lit}`;
@@ -312,6 +506,16 @@ export class BiomeDetails {
     this.clock += dt;
     this.houseUpdate?.(dt);
     if (this.water) this.water.offset.set(this.clock * 0.006, Math.sin(this.clock * 0.25) * 0.015);
+    for (const orbiter of this.orbiters) {
+      const angle = this.clock * orbiter.speed + orbiter.phase;
+      orbiter.mesh.position.set(
+        Math.cos(angle) * orbiter.radius,
+        orbiter.height + Math.sin(angle * 2) * 2,
+        Math.sin(angle) * orbiter.radius,
+      );
+      orbiter.mesh.rotation.y = -angle;
+      orbiter.mesh.rotation.z = Math.sin(angle * 2) * 0.06;
+    }
     for (const { mesh, origin, phase, smoke } of this.drifters) {
       const age = (this.clock * (smoke ? 0.18 : 0.1) + phase) % 1;
       mesh.position.copy(origin);

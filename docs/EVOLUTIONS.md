@@ -1,5 +1,14 @@
 # Évolutions
 
+## Orbite des étoiles — septième circuit spatial
+
+- Nouveau circuit indépendant, ajouté sans modifier les tracés, décors, indices ou comportements des six circuits existants. Boucle de **1 130 m** sur une piste sombre aux bordures cyan et violet.
+- Ambiance spatiale : ciel presque noir, 760 étoiles, soleil avec halo, trois planètes dont une anneau, astéroïdes et cristaux le long de la piste, observatoire sur l'alternative « Station », et trois fusées qui orbitent autour du circuit à des vitesses et hauteurs différentes. Les fusées et les éléments animés se figent en pause.
+- Raccourci technique de 148 m et alternative large de 292 m. Nouvel obstacle mobile : un astéroïde sombre entouré de cristaux.
+- Intégration : entrée dans `trackDefinitions`, valeurs indexées dans `Track`, septième profil de lumière, ciel spatial dédié, couleur de route, décor `space-scenery` et caméra à portée étendue pour les astres lointains.
+- Tests : `tests/generalArt.test.ts` vérifie les étoiles, le soleil, les planètes, les trois fusées et leur orbite ; les matrices de routes, décors, reliefs, raccourcis, alternatives et courses complètes incluent l'index 6. Les scénarios navigateur couvrent le menu et la sauvegarde de la destination, l'art en solo/quatre vues, l'alternative parcourue sur trois tours et les trois difficultés.
+- Captures : `test-results/destination-6-menu.png`, `test-results/destination-6-race.png`, `test-results/circuit-art-6-solo.png`, `test-results/alternative-6.png`, `test-results/circuit-overview-6.png`.
+
 ## La Maison des miettes — sixième circuit miniature
 
 - Nouveau circuit indépendant, ajouté sans modifier le tracé, le décor ni le comportement des cinq circuits existants. Boucle de **1 001 m** avec départ sur la table du petit-déjeuner surélevée à 11 unités, rampes de livres, parquet texturé, murs intérieurs, tableaux et panneaux de pièces.

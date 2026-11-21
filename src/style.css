@@ -691,6 +691,27 @@ select {
   stroke-width: 17;
   stroke-linecap: round;
 }
+.track-art.track-6 {
+  background: radial-gradient(circle at 68% 24%, #5f6dc2 0%, #262b58 34%, #0a0d1c 72%);
+}
+.track-art.track-6:before {
+  width: 5px;
+  height: 5px;
+  right: 34px;
+  top: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    -48px 18px 0 #dfe8ff,
+    62px 44px 0 #b8c8ff,
+    -96px 62px 0 #eef4ff,
+    18px 82px 0 #9fb3ff,
+    -22px 112px 0 #fff,
+    108px 92px 0 #d6e0ff;
+}
+.track-art.track-6 path {
+  stroke: #b9c9ff;
+}
 .track-number {
   position: absolute;
   bottom: 10px;

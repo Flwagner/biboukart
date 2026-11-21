@@ -13,9 +13,13 @@ export function toyMaterial(color: THREE.ColorRepresentation) {
 }
 
 /** Screen-space gradient: stays behind every split-screen camera. */
-export function skyTexture(color: string) {
-  const horizon = new THREE.Color(color).lerp(new THREE.Color('#fff4d9'), 0.45);
-  const zenith = new THREE.Color(color).lerp(new THREE.Color('#388cc6'), 0.38);
+export function skyTexture(color: string, space = false) {
+  const horizon = space
+    ? new THREE.Color(color).lerp(new THREE.Color('#252a4f'), 0.6)
+    : new THREE.Color(color).lerp(new THREE.Color('#fff4d9'), 0.45);
+  const zenith = space
+    ? new THREE.Color('#010207')
+    : new THREE.Color(color).lerp(new THREE.Color('#388cc6'), 0.38);
   const pixels = new Uint8Array(64 * 4);
   for (let y = 0; y < 64; y++) {
     const c = horizon

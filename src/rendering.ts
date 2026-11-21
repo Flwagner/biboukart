@@ -605,7 +605,7 @@ export class Renderer {
     this.track = track;
     const def = trackDefinitions[track.index];
     this.atmosphere(track.index);
-    this.sky = skyTexture(def.sky);
+    this.sky = skyTexture(def.sky, track.index === 6);
     this.scene.background = this.sky;
     this.scene.fog = new THREE.Fog(def.sky, 125, 320);
     const ground = mesh(
@@ -837,6 +837,21 @@ export class Renderer {
         this.world.add(cap);
         continue;
       }
+      if (track.index === 6) {
+        const size = 26 + (i % 4) * 11,
+          asteroid = mesh(
+            new THREE.DodecahedronGeometry(1, 0),
+            i % 3 ? '#242a45' : '#303753',
+            Math.sin(i * 2.4) * 300,
+            size * 0.35,
+            Math.cos(i * 2.4) * 290,
+          );
+        asteroid.scale.set(size, size * (0.55 + (i % 3) * 0.16), size * 0.82);
+        asteroid.rotation.set(i * 0.3, i * 0.7, i * 0.2);
+        asteroid.castShadow = false;
+        this.world.add(asteroid);
+        continue;
+      }
       const hill = mesh(
         track.index === 0
           ? new THREE.SphereGeometry(1, 16, 12)
@@ -949,7 +964,7 @@ export class Renderer {
       this.world.add(g);
       this.kartMeshes.push(g);
       if (r.human) {
-        const c = new THREE.PerspectiveCamera(64, 1, 0.1, 400);
+        const c = new THREE.PerspectiveCamera(64, 1, 0.1, this.track.index === 6 ? 900 : 400);
         c.position
           .copy(r.pos)
           .add(new THREE.Vector3(-Math.sin(r.heading) * 9, 6, -Math.cos(r.heading) * 9));

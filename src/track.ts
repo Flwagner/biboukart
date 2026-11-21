@@ -47,7 +47,7 @@ export interface Surface {
   bank: number;
 }
 export interface Obstacle {
-  kind: 'barrier' | 'rock' | 'crab' | 'snowball' | 'jam';
+  kind: 'barrier' | 'rock' | 'crab' | 'snowball' | 'jam' | 'asteroid';
   t: number;
   radius: number;
   pos: THREE.Vector3;
@@ -60,6 +60,7 @@ const shortcutDefinitions = [
   { start: 0.26, end: 0.44, width: 5 },
   { start: 0.26, end: 0.45, width: 5.2 },
   { start: 0.24, end: 0.4, width: 5 },
+  { start: 0.27, end: 0.44, width: 5 },
 ];
 export class ShortcutCurve extends THREE.Curve<THREE.Vector3> {
   constructor(
@@ -141,9 +142,15 @@ export class Track {
       0.3,
     );
     this.length = this.curve.getLength();
-    this.bumps = [[0.68, 0.87], [0.1, 0.83], [0.18, 0.62], [0.12, 0.77], [0.14, 0.71], [0.47]][
-      index
-    ].map((t) => ({ t, height: [2.2, 2.6, 2, 2.8, 1.8, 1.6][index], halfLength: 10 }));
+    this.bumps = [
+      [0.68, 0.87],
+      [0.1, 0.83],
+      [0.18, 0.62],
+      [0.12, 0.77],
+      [0.14, 0.71],
+      [0.47],
+      [0.16, 0.73],
+    ][index].map((t) => ({ t, height: [2.2, 2.6, 2, 2.8, 1.8, 1.6, 2.2][index], halfLength: 10 }));
     // A pad placed just after a crest is unreachable while the kart is airborne.
     this.boostTs = [
       [0.17, 0.48, 0.79],
@@ -152,6 +159,7 @@ export class Track {
       [0.17, 0.48, 0.72],
       [0.2, 0.48, 0.79],
       [0.17, 0.52, 0.79],
+      [0.2, 0.5, 0.8],
     ][index];
     this.samples = Array.from({ length: 1024 }, (_, i) => this.at(i / 1024));
     this.islandRadius = Math.max(...this.samples.map((p) => Math.hypot(p.x, p.z))) + 65;
@@ -172,7 +180,7 @@ export class Track {
       .sub(this.at((spec.start + spec.end) / 2));
     inward.y = 0;
     inward.normalize();
-    const curve = new ShortcutCurve(base, inward, [50, 20, 12, 18, 24, 30][index]);
+    const curve = new ShortcutCurve(base, inward, [50, 20, 12, 18, 24, 30, 18][index]);
     const shortcutSegments = 512;
     this.shortcut = {
       id: 'shortcut',
@@ -216,7 +224,9 @@ export class Track {
     const alternativeCurve = new ShortcutCurve(alternativeBase, outward, 65);
     const alternative: Branch = {
       id: 'alternative',
-      label: ['Verger', 'Corniche', 'Palmeraie', 'Village', 'Petites rues', 'Chambre'][index],
+      label: ['Verger', 'Corniche', 'Palmeraie', 'Village', 'Petites rues', 'Chambre', 'Station'][
+        index
+      ],
       start,
       end,
       width: this.width - 1,
@@ -245,7 +255,7 @@ export class Track {
   baseElevation(t: number) {
     // The house circuit starts on a giant breakfast table and dives back to the parquet.
     if (this.index === 5) return this.houseElevation(t);
-    const amplitude = [4.5, 6.2, 3.7, 7.2, 2.5][this.index];
+    const amplitude = [4.5, 6.2, 3.7, 7.2, 2.5, 2, 5.2][this.index];
     return (
       (this.index === 3 ? 12 : 8) +
       amplitude * Math.sin(t * Math.PI * 2) +
@@ -435,11 +445,13 @@ export class Track {
     return this.at(target);
   }
   createObstacle(): Obstacle {
-    const t = [0.55, 0.7, 0.12, 0.56, 0.58, 0.62][this.index];
+    const t = [0.55, 0.7, 0.12, 0.56, 0.58, 0.62, 0.61][this.index];
     return {
-      kind: (['barrier', 'rock', 'crab', 'snowball', 'barrier', 'jam'] as const)[this.index],
+      kind: (['barrier', 'rock', 'crab', 'snowball', 'barrier', 'jam', 'asteroid'] as const)[
+        this.index
+      ],
       t,
-      radius: [1.8, 1.6, 1.4, 1.6, 1.8, 1.9][this.index],
+      radius: [1.8, 1.6, 1.4, 1.6, 1.8, 1.9, 1.8][this.index],
       pos: this.at(t),
       offset: 0,
     };
