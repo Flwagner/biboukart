@@ -498,6 +498,16 @@ export class Race {
         continue;
       }
       if (Math.abs(r.speed) < 1 && input.throttle > 0) r.stuck += dt;
+      else if (
+        // A kart can also be pinned against an edge while its wheels still
+        // report speed: measure actual forward progress, not just speed.
+        Math.abs(r.speed) > 3 &&
+        r.stun === 0 &&
+        r.knockedTime === 0 &&
+        !r.airborne &&
+        Math.abs(delta) * this.track.length < dt * 0.5
+      )
+        r.stuck += dt;
       else r.stuck = 0;
       if (r.stuck > 5 && (!child || touchedEdge)) {
         this.respawn(r);

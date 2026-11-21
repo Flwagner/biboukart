@@ -24,7 +24,7 @@ export function createRoadGeometry(track: Track) {
       track.index === 6
         ? [new THREE.Color('#79e7ff'), new THREE.Color('#9a86e8')]
         : track.index === 7
-          ? [new THREE.Color('#e6d5a8'), new THREE.Color('#7da267')]
+          ? [new THREE.Color('#e6d5a8'), new THREE.Color('#d98d5a')]
           : [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
     white = new THREE.Color('#d6d5c5');
   const segments = 512;
@@ -111,18 +111,10 @@ export function createRoadGeometry(track: Track) {
         );
   }
   for (const branch of track.branches) {
-    // Clip the branch tarmac where it overlaps the main road: drawn after it,
-    // the branch would otherwise cover the main surface (and its boost paint).
-    ribbon(
-      -branch.width / 2,
-      branch.width / 2,
-      0.025,
-      () => roadColor,
-      branch.id,
-      false,
-      false,
-      true,
-    );
+    // Sink the branch tarmac just below the main slab instead of clipping its
+    // quads: clipping leaves a hole at merges where the branch extends past
+    // the main road, revealing the terrain underneath.
+    ribbon(-branch.width / 2, branch.width / 2, 0.005, () => roadColor, branch.id);
     for (const side of [-1, 1])
       ribbon(
         (side * branch.width) / 2,

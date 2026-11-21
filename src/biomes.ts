@@ -263,7 +263,13 @@ export class BiomeDetails {
     }
     return this.molten;
   }
-  private lavaRibbon(points: number[][], width: number) {
+  private ribbonAlong(
+    points: number[][],
+    width: number,
+    material: THREE.Material,
+    parent: THREE.Group,
+    name: string,
+  ) {
     const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z))),
       segments = 84,
       vertices: number[] = [],
@@ -292,10 +298,13 @@ export class BiomeDetails {
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
-    const mesh = new THREE.Mesh(geometry, this.moltenMaterial());
-    mesh.name = 'volcanic-flow';
-    this.animated.add(mesh);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    parent.add(mesh);
     return mesh;
+  }
+  private lavaRibbon(points: number[][], width: number) {
+    return this.ribbonAlong(points, width, this.moltenMaterial(), this.animated, 'volcanic-flow');
   }
   private jungleTree(parent: THREE.Group, scale: number, seed: number) {
     const trunk = this.part(
@@ -493,6 +502,88 @@ export class BiomeDetails {
         [3.2, 0.1, 0.55],
         true,
       ).rotation.y = angle + Math.PI / 2;
+    }
+    // A basalt ramp launches the karts over a lava river crossing the main road.
+    const rampStart = 0.509,
+      rampEnd = 0.5205,
+      rampPoints: number[][] = [];
+    for (let step = 0; step <= 24; step++) {
+      const p = this.track.at(rampStart + ((rampEnd - rampStart) * step) / 24);
+      rampPoints.push([p.x, p.y + 0.06, p.z]);
+    }
+    this.ribbonAlong(
+      rampPoints,
+      this.track.width - 2,
+      this.material('#5b4436'),
+      this.group,
+      'lava-ramp',
+    );
+    for (let plank = 0; plank < 7; plank++) {
+      const t = rampStart + 0.001 + plank * 0.0015,
+        p = this.track.at(t),
+        tangent = this.track.tangent(t);
+      this.box(
+        this.group,
+        plank % 2 ? '#3b312c' : '#e6d5a8',
+        [p.x, p.y + 0.13, p.z],
+        [this.track.width - 3, 0.05, 0.32],
+        plank % 2 === 0,
+      ).rotation.y = Math.atan2(tangent.x, tangent.z);
+    }
+    const lip = this.track.at(rampEnd),
+      lipTangent = this.track.tangent(rampEnd);
+    this.box(
+      this.group,
+      '#f6bd42',
+      [lip.x, lip.y + 0.16, lip.z],
+      [this.track.width - 2, 0.12, 0.55],
+      true,
+    ).rotation.y = Math.atan2(lipTangent.x, lipTangent.z);
+    for (let step = 0; step <= 6; step++) {
+      const t = rampStart + ((rampEnd - rampStart) * step) / 6,
+        p = this.track.at(t),
+        tangent = this.track.tangent(t),
+        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
+      for (const side of [-1, 1]) {
+        const post = p.clone().addScaledVector(normal, side * (this.track.width / 2 + 0.7));
+        this.box(this.group, '#3b312c', [post.x, p.y + 0.65, post.z], [0.24, 1.5, 0.24]);
+        this.box(this.group, '#f6bd42', [post.x, p.y + 1.5, post.z], [0.32, 0.32, 0.32], true);
+      }
+    }
+    const crossingT = 0.5255,
+      crossing = this.track.at(crossingT),
+      crossingTangent = this.track.tangent(crossingT).setY(0).normalize(),
+      crossingNormal = new THREE.Vector3(crossingTangent.z, 0, -crossingTangent.x).normalize(),
+      laterals = [-36, -27, -19, -12, -6, 0, 6, 12, 19, 27, 36];
+    const crossingPoints = (along: number) =>
+      laterals.map((lateral) => {
+        const p = crossing
+          .clone()
+          .addScaledVector(crossingNormal, lateral)
+          .addScaledVector(crossingTangent, along + Math.sin(lateral * 0.28) * 0.7);
+        const roadY = crossing.y + lateral * this.track.bank(crossingT);
+        if (Math.abs(lateral) <= this.track.width / 2) p.y = roadY + 0.07;
+        else
+          p.y =
+            THREE.MathUtils.lerp(
+              roadY,
+              this.track.terrainHeight(p),
+              Math.min(1, (Math.abs(lateral) - this.track.width / 2) / 16),
+            ) + 0.07;
+        return [p.x, p.y, p.z];
+      });
+    for (const side of [-1, 1])
+      this.ribbonAlong(
+        crossingPoints(side * 3.7),
+        1.6,
+        this.material('#332824'),
+        this.group,
+        'lava-bank',
+      );
+    this.lavaRibbon(crossingPoints(0), 5.2);
+    for (let puff = 0; puff < 3; puff++) {
+      const [x, y, z] = crossingPoints(0)[2 + puff * 3];
+      this.drift(new THREE.Vector3(x, y + 0.55, z), true, puff / 3);
     }
     for (let puff = 0; puff < 4; puff++) {
       const angle = (puff / 4) * Math.PI * 2;

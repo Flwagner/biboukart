@@ -151,10 +151,10 @@ export class Track {
       [0.14, 0.71],
       [0.47],
       [0.16, 0.73],
-      [0.12, 0.66],
+      [0.12, 0.52, 0.66],
     ][index].map((t) => ({
       t,
-      height: [2.2, 2.6, 2, 2.8, 1.8, 1.6, 2.2, 2.3][index],
+      height: [2.2, 2.6, 2, 2.8, 1.8, 1.6, 2.2, 2.4][index],
       halfLength: 10,
     }));
     // A pad placed just after a crest is unreachable while the kart is airborne.

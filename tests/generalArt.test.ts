@@ -104,8 +104,10 @@ describe('art direction throughout the game', () => {
     const art = new BiomeDetails(new Track(7));
     expect(art.group.getObjectByName('jungle-volcano')).toBeInstanceOf(THREE.Group);
     const flows = art.animated.children.filter((object) => object.name === 'volcanic-flow');
-    expect(flows).toHaveLength(2);
+    expect(flows).toHaveLength(3);
     expect(art.animated.getObjectByName('lava-lake')).toBeInstanceOf(THREE.Mesh);
+    expect(art.group.getObjectByName('lava-ramp')).toBeInstanceOf(THREE.Mesh);
+    expect(art.group.getObjectByName('lava-bank')).toBeInstanceOf(THREE.Mesh);
     expect(art.footprints.some((footprint) => footprint.kind === 'volcano')).toBe(true);
     expect(
       art.footprints.filter((footprint) => footprint.kind === 'jungle-grove').length,
