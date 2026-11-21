@@ -39,6 +39,7 @@ export function createRoadGeometry(track: Track) {
     route: Route = 'main',
     embankment = false,
     edgeMarking = false,
+    clipOverlaps = false,
   ) => {
     for (let i = 0; i < segments; i++) {
       const a = track.routeAt(route, i / segments),
@@ -63,7 +64,7 @@ export function createRoadGeometry(track: Track) {
         // across a different part of that same road, not only the shortcut.
         if (onRoad(middle, 1.2) || ps.some((p) => onRoad(p, 0.1))) continue;
       } else if (
-        edgeMarking &&
+        (edgeMarking || clipOverlaps) &&
         track.routes.some((other) => other !== route && track.overlapsRoad(middle, other, 0.25))
       )
         continue;
@@ -101,7 +102,18 @@ export function createRoadGeometry(track: Track) {
         );
   }
   for (const branch of track.branches) {
-    ribbon(-branch.width / 2, branch.width / 2, 0.025, () => roadColor, branch.id);
+    // Clip the branch tarmac where it overlaps the main road: drawn after it,
+    // the branch would otherwise cover the main surface (and its boost paint).
+    ribbon(
+      -branch.width / 2,
+      branch.width / 2,
+      0.025,
+      () => roadColor,
+      branch.id,
+      false,
+      false,
+      true,
+    );
     for (const side of [-1, 1])
       ribbon(
         (side * branch.width) / 2,
