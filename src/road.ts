@@ -19,6 +19,18 @@ export function createRoadGeometry(track: Track) {
     edgeColors = [new THREE.Color('#f4e9cf'), new THREE.Color('#ec8d76')],
     white = new THREE.Color('#d6d5c5');
   const segments = 512;
+  // Boost strips are painted into the road itself: a separate decal kept
+  // disappearing under the tarmac where banking and branch merges shifted
+  // the two surfaces by a few centimetres.
+  const boostTs = [0.17, 0.48, 0.79],
+    boostColor = new THREE.Color('#ffd84a'),
+    onBoost = (i: number) => {
+      const t = i / segments;
+      return boostTs.some((boost) => {
+        const distance = Math.abs(t - boost);
+        return Math.min(distance, 1 - distance) * track.length < 2.4;
+      });
+    };
   const ribbon = (
     left: number,
     right: number,
@@ -74,7 +86,7 @@ export function createRoadGeometry(track: Track) {
       }
     }
   };
-  ribbon(-track.width / 2, track.width / 2, 0.02, () => roadColor);
+  ribbon(-track.width / 2, track.width / 2, 0.02, (i) => (onBoost(i) ? boostColor : roadColor));
   for (const route of track.routes) {
     const width = track.routeWidth(route);
     for (const side of [-1, 1])

@@ -11,8 +11,10 @@ interface Footprint {
 type Vec3 = [number, number, number];
 
 const WALL_HEIGHT = 58;
-const TABLE_TOP = 10.5;
-const TABLE_SURFACE = 11;
+/** Centre of the table slab; the cloth, runner and props stack above it. */
+const TABLE_TOP = 10.35;
+/** Top of the tablecloth, where the breakfast props sit (road surface is 11.02). */
+const TABLE_SURFACE = 10.88;
 
 /**
  * Everything inside the giant house: rooms, furniture and the breakfast table
@@ -189,18 +191,31 @@ class HouseBuilder {
   }
 
   private breakfastTable() {
-    const plateau = this.track.samples.filter((p) => p.y > 6);
-    const bounds = new THREE.Box3().setFromPoints(plateau);
+    // The tabletop must stop where the road leaves the plateau. A slab sized
+    // from the ramp samples used to swallow the descent, so the kart drove
+    // through the table and the cream underside filled the screen.
+    const flat = 0.055,
+      half = this.track.width / 2,
+      footprint: THREE.Vector3[] = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = -flat + (2 * flat * i) / 40,
+        p = this.track.at(t),
+        tangent = this.track.tangent(t),
+        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
+      for (const side of [-1, 1])
+        footprint.push(p.clone().addScaledVector(normal, side * (half + 36)));
+    }
+    const bounds = new THREE.Box3().setFromPoints(footprint);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
-    const width = size.x + 34,
-      depth = size.z + 34;
+    const width = size.x,
+      depth = size.z;
     const table = new THREE.Group();
     table.name = 'breakfast-table';
     table.position.set(center.x, 0, center.z);
     this.box(table, '#a97a4f', [0, TABLE_TOP, 0], [width, 0.9, depth]);
-    this.box(table, '#f1dfc0', [0, TABLE_TOP + 0.35, 0], [width + 2.5, 0.25, depth + 2.5]);
-    this.box(table, '#c4574e', [0, TABLE_TOP + 0.45, 0], [width * 0.34, 0.06, depth * 0.34]);
+    this.box(table, '#f1dfc0', [0, TABLE_TOP + 0.49, 0], [width + 2.5, 0.08, depth + 2.5]);
+    this.box(table, '#c4574e', [0, TABLE_TOP + 0.54, 0], [width * 0.34, 0.02, depth * 0.34]);
     for (const sx of [-1, 1])
       for (const sz of [-1, 1])
         this.box(
@@ -234,7 +249,7 @@ class HouseBuilder {
 
     const item = (t: number, side: number, radius: number, kind: string) => {
       const root = this.site(t, side, radius, kind);
-      root.position.y = TABLE_SURFACE - 0.01;
+      root.position.y = TABLE_SURFACE;
       return root;
     };
 
@@ -593,7 +608,7 @@ class HouseBuilder {
     this.sway.push(pendant);
 
     const kettle = this.site(0.055, this.outward(0.055, 30), 7, 'kettle');
-    kettle.position.y = TABLE_SURFACE - 0.01;
+    kettle.position.y = TABLE_SURFACE;
     this.cyl(kettle, '#9fb0ba', [0, 3.6, 0], [3.6, 7, 3.6]);
     this.cyl(kettle, '#7a5335', [0, 7.4, 0], [1.4, 1.2, 1.4]);
     this.cyl(kettle, '#9fb0ba', [4.2, 5, 0], [0.8, 4, 0.8]);

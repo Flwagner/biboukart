@@ -530,7 +530,7 @@ export class Race {
           !r.airborne &&
           n.route === 'main' &&
           d * this.track.length < 3 &&
-          n.distance < this.track.width / 2 &&
+          n.distance <= n.width / 2 + 0.15 &&
           r.boost < 0.15
         ) {
           r.boost = 1.1;

@@ -692,7 +692,6 @@ export class Renderer {
         block(g, '#263345', [track.width + 3, 1, 0.5], [0, 6, 0]);
         g.add(startBanner(track.width + 2.5));
       } else {
-        block(g, '#f8c658', [track.width - 1, 0.025, 4], [0, 0.06, 0]);
         for (const x of [-3, 0, 3]) {
           const arrow = mesh(new THREE.ConeGeometry(0.7, 1.5, 3), '#fff2be', x, 0.1, 0);
           arrow.rotation.x = Math.PI / 2;

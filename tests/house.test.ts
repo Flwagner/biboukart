@@ -21,6 +21,28 @@ describe('the miniature house circuit', () => {
     }
   });
 
+  it('stops the tabletop before the road dives off the plateau', () => {
+    const track = new Track(5),
+      art = new BiomeDetails(track),
+      table = art.group.getObjectByName('breakfast-table')!;
+    table.updateMatrixWorld(true);
+    const slab = new THREE.Box3().setFromObject(table),
+      probe = new THREE.Vector3();
+    expect(slab.max.y).toBeLessThan(track.at(0).y);
+    // Wherever the ramp drops below the tabletop, its footprint must be clear,
+    // otherwise the slab swallows the descent and the kart drives through it.
+    for (const [from, to] of [
+      [0.056, 0.12],
+      [0.88, 0.944],
+    ])
+      for (let t = from; t < to; t += 0.002) {
+        const p = track.at(t);
+        if (p.y >= slab.max.y) continue;
+        probe.set(p.x, slab.max.y - 0.02, p.z);
+        expect(slab.containsPoint(probe), `t=${t.toFixed(3)}`).toBe(false);
+      }
+  });
+
   it('rolls a jam jar and keeps its own preview', () => {
     const track = new Track(5);
     expect(track.createObstacle().kind).toBe('jam');

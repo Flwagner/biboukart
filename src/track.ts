@@ -244,7 +244,9 @@ export class Track {
   /** Flat tabletop around the start line, with a smooth ramp on both sides. */
   houseElevation(t: number) {
     const distance = Math.min(t, 1 - t),
-      flat = 0.055,
+      // The flat run outlasts the rectangular tabletop: its corners jut past
+      // the plateau centreline, so the descent must start beyond the slab.
+      flat = 0.068,
       fade = 0.05;
     if (distance >= flat + fade) return 2;
     if (distance <= flat) return 11;

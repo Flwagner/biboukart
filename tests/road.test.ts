@@ -47,4 +47,33 @@ describe('full-width asphalt and clipped shoulders', () => {
     },
     30000,
   );
+  it.each([0, 1, 2, 3, 4, 5])(
+    'paints each boost strip across the full road width on circuit %i',
+    (index) => {
+      const track = new Track(index),
+        geometry = createRoadGeometry(track),
+        positions = geometry.getAttribute('position'),
+        colors = geometry.getAttribute('color'),
+        boost = new THREE.Color('#ffd84a');
+      for (const t of [0.17, 0.48, 0.79]) {
+        const quad = Math.round(t * 512),
+          left = quad * 6,
+          right = left + 2;
+        // Both painted edges sit on the asphalt edges, not inside them.
+        expect(
+          Math.hypot(
+            positions.getX(left) - positions.getX(right),
+            positions.getZ(left) - positions.getZ(right),
+          ),
+        ).toBeCloseTo(track.width, 4);
+        for (let offset = 0; offset < 6; offset++) {
+          const i = left + offset;
+          expect(colors.getX(i)).toBeCloseTo(boost.r, 4);
+          expect(colors.getY(i)).toBeCloseTo(boost.g, 4);
+          expect(colors.getZ(i)).toBeCloseTo(boost.b, 4);
+        }
+      }
+      geometry.dispose();
+    },
+  );
 });
