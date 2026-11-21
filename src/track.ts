@@ -129,6 +129,8 @@ export class Track {
   islandRadius: number;
   maxProgressRatio: number;
   bumps: { t: number; height: number; halfLength: number }[] = [];
+  /** Boost strips, kept clear of the jumps so they stay reachable. */
+  boostTs: number[] = [];
   constructor(public index: number) {
     const d = trackDefinitions[index];
     this.width = d.width;
@@ -142,6 +144,15 @@ export class Track {
     this.bumps = [[0.68, 0.87], [0.1, 0.83], [0.18, 0.62], [0.12, 0.77], [0.14, 0.71], [0.47]][
       index
     ].map((t) => ({ t, height: [2.2, 2.6, 2, 2.8, 1.8, 1.6][index], halfLength: 10 }));
+    // A pad placed just after a crest is unreachable while the kart is airborne.
+    this.boostTs = [
+      [0.17, 0.48, 0.79],
+      [0.17, 0.48, 0.79],
+      [0.15, 0.48, 0.79],
+      [0.17, 0.48, 0.72],
+      [0.2, 0.48, 0.79],
+      [0.17, 0.52, 0.79],
+    ][index];
     this.samples = Array.from({ length: 1024 }, (_, i) => this.at(i / 1024));
     this.islandRadius = Math.max(...this.samples.map((p) => Math.hypot(p.x, p.z))) + 65;
     this.tangents = Array.from({ length: 512 }, (_, i) => this.tangent(i / 512));

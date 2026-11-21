@@ -55,7 +55,7 @@ describe('full-width asphalt and clipped shoulders', () => {
         positions = geometry.getAttribute('position'),
         colors = geometry.getAttribute('color'),
         boost = new THREE.Color('#ffd84a');
-      for (const t of [0.17, 0.48, 0.79]) {
+      for (const t of track.boostTs) {
         const quad = Math.round(t * 512),
           left = quad * 6,
           right = left + 2;

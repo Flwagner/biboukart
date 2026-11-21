@@ -84,7 +84,7 @@ export class Race {
   pickups: Pickup[] = [];
   hazards: Hazard[] = [];
   obstacles: Obstacle[] = [];
-  boosts: number[] = [0.17, 0.48, 0.79];
+  boosts: number[] = [];
   elapsed = 0;
   countdown = 3.5;
   finished = false;
@@ -96,6 +96,7 @@ export class Race {
     public difficulty: Difficulty = 'normal',
   ) {
     this.track = new Track(track);
+    this.boosts = [...this.track.boostTs];
     this.obstacles = [this.track.createObstacle()];
     for (let i = 0; i < 6; i++) {
       const t = 1 - (3 + Math.floor(i / 2) * 5) / this.track.length,

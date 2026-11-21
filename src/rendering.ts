@@ -667,7 +667,7 @@ export class Renderer {
       );
       this.world.add(dash);
     }
-    for (const t of [0, 0.17, 0.48, 0.79]) {
+    for (const t of [0, ...track.boostTs]) {
       const p = track.at(t),
         tan = track.tangent(t),
         g = new THREE.Group();

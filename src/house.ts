@@ -123,6 +123,7 @@ class HouseBuilder {
     this.wc();
     this.bedroom();
     this.livingRoom();
+    this.insideRooms();
     this.alternativeLandmark();
     for (const t of [0.17, 0.34, 0.53, 0.72, 0.9]) this.doorway(t);
     this.roomSign(0.17, 'COULOIR', '#5f7f6c');
@@ -563,6 +564,118 @@ class HouseBuilder {
     const pouf = this.site(0.76, this.outward(0.76, 38), 12, 'pouf');
     this.cyl(pouf, '#d9a0a8', [0, 3.5, 0], [7, 7, 7]);
     this.cyl(pouf, '#d9a0a8', [0, 7.4, 0], [6.4, 0.8, 6.4]);
+  }
+
+  /** Furnish the loop interior, so both sides of the road feel inhabited. */
+  private insideRooms() {
+    const kitchen = this.site(0.14, -this.outward(0.14, 30), 20, 'kitchen-island');
+    this.box(kitchen, '#a97a4f', [0, 4, 0], [13, 8, 26]);
+    this.box(kitchen, '#f1dfc0', [0, 8.5, 0], [14, 0.9, 27]);
+    this.oval(kitchen, '#9fb0ba', [0, 9.2, -4], [4.4, 0.7, 3.2]);
+    this.cyl(kitchen, '#9fb0ba', [0, 10.4, -8], [0.5, 3.6, 0.5]);
+    for (const side of [-1, 1]) {
+      const stool = new THREE.Group();
+      stool.position.set(side * 9, 0, 4);
+      this.cyl(stool, '#c4574e', [0, 3.6, 0], [2.2, 7.2, 2.2]);
+      this.cyl(stool, '#e3c06a', [0, 7.6, 0], [2.6, 0.7, 2.6]);
+      kitchen.add(stool);
+    }
+    const fridge = new THREE.Group();
+    fridge.position.set(10, 0, -12);
+    this.box(fridge, '#9fb0ba', [0, 11, 0], [7, 22, 8]);
+    this.box(fridge, '#4b4239', [3.7, 11, 0], [0.6, 4, 0.6]);
+    kitchen.add(fridge);
+
+    const library = this.site(0.32, -this.outward(0.32, 32), 20, 'library');
+    this.box(library, '#8c6340', [0, 13, 0], [10, 26, 24]);
+    for (let row = 0; row < 3; row++) {
+      this.box(library, '#a97a4f', [0, 3 + row * 8, 0], [10.6, 0.7, 24]);
+      for (let book = 0; book < 6; book++)
+        this.box(
+          library,
+          ['#c4574e', '#6d94b8', '#e3c06a', '#78927f', '#d9a0a8', '#b23a48'][book],
+          [5.6, 6 + row * 8, -9 + book * 3.6],
+          [0.9, 5, 2],
+        );
+    }
+    const armchair = new THREE.Group();
+    armchair.position.set(-10, 0, 10);
+    this.box(armchair, '#d9a0a8', [0, 4, 0], [9, 7, 9]);
+    this.box(armchair, '#d9a0a8', [0, 11, -3.6], [9, 9, 1.6]);
+    this.box(armchair, '#e3c06a', [0, 8, 1], [7, 2, 7]);
+    library.add(armchair);
+    const floorLamp = new THREE.Group();
+    floorLamp.position.set(-10, 0, -8);
+    this.cyl(floorLamp, '#4b4239', [0, 10, 0], [0.6, 20, 0.6]);
+    this.cyl(floorLamp, '#fff0c4', [0, 21, 0], [3.4, 4, 3.4], true);
+    library.add(floorLamp);
+
+    const play = this.site(0.6, -this.outward(0.6, 30), 18, 'play-corner');
+    this.box(play, '#d9a0a8', [0, 0.12, 0], [26, 0.24, 18]);
+    this.box(play, '#f7f0e2', [0, 0.26, 0], [22, 0.12, 14]);
+    this.box(play, '#7a5335', [0, 5, 0], [15, 10, 11]);
+    this.box(play, '#a97a4f', [0, 10.7, 0], [16, 1.4, 12]);
+    this.box(play, '#e3c06a', [0, 8, 5.8], [2.2, 2.2, 0.5]);
+    for (const [x, z, color] of [
+      [-9, 6, '#c4574e'],
+      [-7, 8, '#6d94b8'],
+      [9, 5, '#e3c06a'],
+      [10, 8, '#78927f'],
+    ] as const)
+      this.box(play, color, [x, 1.8, z], [3, 3, 3]);
+    const teddy = new THREE.Group();
+    teddy.position.set(10, 0, -4);
+    this.oval(teddy, '#c9a24a', [0, 3.4, 0], [2.4, 2.6, 2.2]);
+    this.oval(teddy, '#c9a24a', [0, 6.4, 0], [1.7, 1.6, 1.6]);
+    for (const side of [-1, 1]) this.oval(teddy, '#c9a24a', [side * 1.5, 7.7, 0], [0.7, 0.7, 0.5]);
+    play.add(teddy);
+
+    const dining = this.site(0.47, -this.outward(0.47, 30), 17, 'dining-nook');
+    this.cyl(dining, '#a97a4f', [0, 9, 0], [11, 1, 11]);
+    this.cyl(dining, '#8c6340', [0, 4.5, 0], [1.6, 9, 1.6]);
+    this.cyl(dining, '#8c6340', [0, 0.4, 0], [6, 0.8, 6]);
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2;
+      const chair = new THREE.Group();
+      chair.position.set(Math.sin(angle) * 13, 0, Math.cos(angle) * 13);
+      chair.rotation.y = angle + Math.PI;
+      this.box(chair, '#a97a4f', [0, 4, 0], [6, 0.8, 6]);
+      this.box(chair, '#a97a4f', [0, 8, -2.6], [6, 7, 1]);
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1])
+          this.box(chair, '#8c6340', [sx * 2.4, 2, sz * 2.4], [0.8, 4, 0.8]);
+      dining.add(chair);
+    }
+    this.oval(dining, '#f7f0e2', [0, 9.6, 0], [4, 0.5, 4]);
+
+    const garden = this.site(0.86, -this.outward(0.86, 30), 19, 'indoor-garden');
+    for (const [x, z, scale] of [
+      [-8, -6, 1.2],
+      [2, 5, 0.9],
+      [9, -8, 1],
+    ] as const) {
+      const plant = new THREE.Group();
+      plant.position.set(x, 0, z);
+      this.cyl(plant, '#c07a5a', [0, 4 * scale, 0], [4 * scale, 8 * scale, 4 * scale]);
+      for (let leaf = 0; leaf < 6; leaf++) {
+        const blade = this.oval(
+          plant,
+          leaf % 2 ? '#5f8f5c' : '#7fa86f',
+          [
+            Math.sin(leaf * 2.1) * 3 * scale,
+            (10 + (leaf % 3) * 3) * scale,
+            Math.cos(leaf * 2.1) * 3 * scale,
+          ],
+          [1.6 * scale, 6 * scale, 1.6 * scale],
+        );
+        blade.rotation.z = Math.sin(leaf * 2.1) * 0.5;
+      }
+      garden.add(plant);
+    }
+    this.box(garden, '#8c6340', [8, 3.5, 8], [12, 0.9, 5]);
+    for (const x of [3, 13]) this.box(garden, '#8c6340', [x, 1.7, 8], [1, 3.4, 4]);
+    this.cyl(garden, '#6d94b8', [0, 2.4, -8], [2, 4.8, 2]);
+    this.cyl(garden, '#6d94b8', [2.4, 3.4, -8], [0.5, 5, 0.5]).rotation.z = -0.8;
   }
 
   /** A giant armchair marks the scenic fork, mirroring the other biomes' landmarks. */

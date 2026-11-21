@@ -22,7 +22,7 @@ export function createRoadGeometry(track: Track) {
   // Boost strips are painted into the road itself: a separate decal kept
   // disappearing under the tarmac where banking and branch merges shifted
   // the two surfaces by a few centimetres.
-  const boostTs = [0.17, 0.48, 0.79],
+  const boostTs = track.boostTs,
     boostColor = new THREE.Color('#ffd84a'),
     onBoost = (i: number) => {
       const t = i / segments;
