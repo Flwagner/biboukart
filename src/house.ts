@@ -11,10 +11,9 @@ interface Footprint {
 type Vec3 = [number, number, number];
 
 const WALL_HEIGHT = 58;
-/** Centre of the table slab; the cloth, runner and props stack above it. */
-const TABLE_TOP = 10.35;
-/** Top of the tablecloth, where the breakfast props sit (road surface is 11.02). */
-const TABLE_SURFACE = 10.88;
+/** Curved tabletop footprint, in track parameter space, with its flat top height. */
+export const tableBounds = { from: -0.063, to: 0.063, halfWidth: 43.5, top: 10.75 };
+const TABLE_SURFACE = tableBounds.top;
 
 /**
  * Everything inside the giant house: rooms, furniture and the breakfast table
@@ -191,54 +190,47 @@ class HouseBuilder {
   }
 
   private breakfastTable() {
-    // The tabletop must stop where the road leaves the plateau. A slab sized
-    // from the ramp samples used to swallow the descent, so the kart drove
-    // through the table and the cream underside filled the screen.
-    const flat = 0.055,
-      half = this.track.width / 2,
-      footprint: THREE.Vector3[] = [];
-    for (let i = 0; i <= 40; i++) {
-      const t = -flat + (2 * flat * i) / 40,
-        p = this.track.at(t),
-        tangent = this.track.tangent(t),
-        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
-      for (const side of [-1, 1])
-        footprint.push(p.clone().addScaledVector(normal, side * (half + 36)));
-    }
-    const bounds = new THREE.Box3().setFromPoints(footprint);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const size = bounds.getSize(new THREE.Vector3());
-    const width = size.x,
-      depth = size.z;
-    const table = new THREE.Group();
+    // A rectangular slab always ended up crossing the ramp at one of its
+    // corners. The tabletop is a curved ribbon that follows the road instead,
+    // so it never pokes above the tarmac anywhere along its length.
+    const { from, to, halfWidth, top } = tableBounds,
+      slabBottom = top - 0.9,
+      table = new THREE.Group();
     table.name = 'breakfast-table';
-    table.position.set(center.x, 0, center.z);
-    this.box(table, '#a97a4f', [0, TABLE_TOP, 0], [width, 0.9, depth]);
-    this.box(table, '#f1dfc0', [0, TABLE_TOP + 0.49, 0], [width + 2.5, 0.08, depth + 2.5]);
-    this.box(table, '#c4574e', [0, TABLE_TOP + 0.54, 0], [width * 0.34, 0.02, depth * 0.34]);
-    for (const sx of [-1, 1])
-      for (const sz of [-1, 1])
+    table.add(this.tableTop(halfWidth, top, '#f1dfc0', from, to));
+    table.add(this.tableTop(halfWidth, slabBottom, '#8c6340', from, to, 72, true));
+    table.add(this.tableSkirt(halfWidth, top, slabBottom, '#a97a4f', from, to));
+    table.add(this.tableTop(19, top + 0.01, '#c4574e', from + 0.004, to - 0.004));
+    for (const side of [-1, 1])
+      for (const t of [from + 0.01, to - 0.01]) {
+        const p = this.track.at(t),
+          tangent = this.track.tangent(t),
+          normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+          position = p.clone().addScaledVector(normal, side * (halfWidth - 6));
         this.box(
           table,
           '#8c6340',
-          [sx * (width / 2 - 6), (TABLE_TOP - 0.45) / 2, sz * (depth / 2 - 6)],
-          [4.6, TABLE_TOP - 0.45, 4.6],
+          [position.x, slabBottom / 2, position.z],
+          [4.6, slabBottom, 4.6],
         );
+      }
     this.group.add(table);
 
-    const chairs: [number, number, number][] = [
-      [0, 0, depth / 2 + 9],
-      [0, 0, -depth / 2 - 9],
-      [width / 2 + 9, 0, 0],
-      [-width / 2 - 9, 0, 0],
-    ];
-    for (const [cx, , cz] of chairs) {
-      const position = new THREE.Vector3(center.x + cx, 0, center.z + cz);
-      if (this.track.overlapsAnyRoad(position, 9)) continue;
+    for (const [t, side] of [
+      [0.02, 1],
+      [0.02, -1],
+      [-0.02, 1],
+      [-0.02, -1],
+    ] as const) {
+      const p = this.track.at(t),
+        tangent = this.track.tangent(t),
+        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+        position = p.clone().addScaledVector(normal, side * (halfWidth + 9));
+      if (this.track.overlapsAnyRoad(position, 10)) continue;
       position.y = this.track.terrainHeight(position);
       const chair = new THREE.Group();
       chair.position.copy(position);
-      chair.rotation.y = Math.atan2(center.x - position.x, center.z - position.z);
+      chair.rotation.y = Math.atan2(-normal.x * side, -normal.z * side);
       this.box(chair, '#a97a4f', [0, 6, 0], [13, 1.4, 13]);
       this.box(chair, '#a97a4f', [0, 11.5, -5.8], [13, 10, 1.4]);
       for (const sx of [-1, 1])
@@ -304,6 +296,94 @@ class HouseBuilder {
     const knife = item(0.024, -32, 7, 'butter-knife');
     this.box(knife, '#9fb0ba', [0, 0.4, 1.5], [2.6, 0.4, 13]);
     this.box(knife, '#7a5335', [0, 0.6, -6.5], [2.8, 0.9, 6]);
+  }
+
+  /** Horizontal strip following the road, used for the tabletop and its runner. */
+  private tableTop(
+    halfWidth: number,
+    y: number,
+    color: string,
+    from: number,
+    to: number,
+    steps = 72,
+    flip = false,
+  ) {
+    const positions: number[] = [],
+      indices: number[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = from + ((to - from) * i) / steps,
+        p = this.track.at(t),
+        tangent = this.track.tangent(t),
+        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
+      for (const side of [-1, 1]) {
+        const v = p.clone().addScaledVector(normal, side * halfWidth);
+        positions.push(v.x, y, v.z);
+      }
+    }
+    for (let i = 0; i < steps; i++) {
+      const a = i * 2;
+      if (flip) indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      else indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+    return this.tableMesh(positions, indices, this.material(color));
+  }
+
+  /** Vertical band around the whole tabletop, so the slab reads from the floor. */
+  private tableSkirt(
+    halfWidth: number,
+    top: number,
+    bottom: number,
+    color: string,
+    from: number,
+    to: number,
+    steps = 72,
+  ) {
+    const positions: number[] = [],
+      indices: number[] = [],
+      edge = (side: number) => {
+        const base = positions.length / 3;
+        for (let i = 0; i <= steps; i++) {
+          const t = from + ((to - from) * i) / steps,
+            p = this.track.at(t),
+            tangent = this.track.tangent(t),
+            normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+            v = p.clone().addScaledVector(normal, side * halfWidth);
+          positions.push(v.x, top, v.z, v.x, bottom, v.z);
+        }
+        for (let i = 0; i < steps; i++) {
+          const a = base + i * 2;
+          if (side > 0) indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+          else indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+        }
+      };
+    edge(-1);
+    edge(1);
+    for (const [t, flip] of [
+      [from, false],
+      [to, true],
+    ] as const) {
+      const p = this.track.at(t),
+        tangent = this.track.tangent(t),
+        normal = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize(),
+        a = p.clone().addScaledVector(normal, -halfWidth),
+        b = p.clone().addScaledVector(normal, halfWidth),
+        base = positions.length / 3;
+      positions.push(a.x, top, a.z, b.x, top, b.z, a.x, bottom, a.z, b.x, bottom, b.z);
+      if (flip) indices.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+      else indices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    }
+    return this.tableMesh(positions, indices, this.material(color));
+  }
+
+  private tableMesh(positions: number[], indices: number[], material: THREE.Material) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
   }
 
   private books() {

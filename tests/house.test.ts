@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { Track, trackPreviewPath } from '../src/track';
 import { BiomeDetails } from '../src/biomes';
+import { tableBounds } from '../src/house';
 import { obstacleModel } from '../src/scenery';
 
 describe('the miniature house circuit', () => {
@@ -21,26 +22,19 @@ describe('the miniature house circuit', () => {
     }
   });
 
-  it('stops the tabletop before the road dives off the plateau', () => {
+  it('keeps the curved tabletop under the road for its whole length', () => {
     const track = new Track(5),
       art = new BiomeDetails(track),
       table = art.group.getObjectByName('breakfast-table')!;
     table.updateMatrixWorld(true);
-    const slab = new THREE.Box3().setFromObject(table),
-      probe = new THREE.Vector3();
-    expect(slab.max.y).toBeLessThan(track.at(0).y);
-    // Wherever the ramp drops below the tabletop, its footprint must be clear,
-    // otherwise the slab swallows the descent and the kart drives through it.
-    for (const [from, to] of [
-      [0.056, 0.12],
-      [0.88, 0.944],
-    ])
-      for (let t = from; t < to; t += 0.002) {
-        const p = track.at(t);
-        if (p.y >= slab.max.y) continue;
-        probe.set(p.x, slab.max.y - 0.02, p.z);
-        expect(slab.containsPoint(probe), `t=${t.toFixed(3)}`).toBe(false);
-      }
+    const box = new THREE.Box3().setFromObject(table);
+    expect(box.max.y).toBeLessThan(track.at(0).y);
+    // The road's lowest edge stays above the tabletop along the whole table.
+    for (let t = tableBounds.from; t <= tableBounds.to; t += 0.002) {
+      const p = track.at(t),
+        lowest = p.y + 0.02 - (Math.abs(track.bank(t)) * track.width) / 2;
+      expect(lowest, `t=${t.toFixed(3)}`).toBeGreaterThan(box.max.y);
+    }
   });
 
   it('rolls a jam jar and keeps its own preview', () => {
