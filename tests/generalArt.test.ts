@@ -32,16 +32,16 @@ function release(...roots: THREE.Object3D[]) {
 
 describe('art direction throughout the game', () => {
   it('preserves the approved Prairie lighting and gives every other biome its own atmosphere', () => {
-    expect(circuitAtmospheres).toHaveLength(7);
+    expect(circuitAtmospheres).toHaveLength(8);
     expect(circuitAtmospheres[0]).toEqual({
       sun: '#fff0d2',
       skyLight: '#d5eaff',
       bounce: '#617b52',
       exposure: 1.15,
     });
-    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(7);
+    expect(new Set(circuitAtmospheres.map((profile) => profile.sun)).size).toBe(8);
   });
-  it.each([1, 2, 3, 4, 5, 6])(
+  it.each([1, 2, 3, 4, 5, 6, 7])(
     'keeps the whole new decor outside both routes on circuit %i',
     (index) => {
       const track = new Track(index);
@@ -66,7 +66,7 @@ describe('art direction throughout the game', () => {
     },
   );
   it('animates local water and freezes ambience when given a zero simulation step', () => {
-    for (const index of [1, 2, 3, 6]) {
+    for (const index of [1, 2, 3, 6, 7]) {
       const art = new BiomeDetails(new Track(index));
       art.update(0.25);
       const transforms = art.animated.children.map((mesh) => mesh.position.toArray());
@@ -98,6 +98,27 @@ describe('art direction throughout the game', () => {
     after.forEach((position, index) => expect(position).not.toEqual(before[index]));
     art.update(0);
     expect(rockets.map((rocket) => rocket.position.toArray())).toEqual(after);
+    release(art.group, art.animated);
+  });
+  it('surrounds the jungle circuit with a volcano, lava flows and dense groves', () => {
+    const art = new BiomeDetails(new Track(7));
+    expect(art.group.getObjectByName('jungle-volcano')).toBeInstanceOf(THREE.Group);
+    const flows = art.animated.children.filter((object) => object.name === 'volcanic-flow');
+    expect(flows).toHaveLength(2);
+    expect(art.animated.getObjectByName('lava-lake')).toBeInstanceOf(THREE.Mesh);
+    expect(art.footprints.some((footprint) => footprint.kind === 'volcano')).toBe(true);
+    expect(
+      art.footprints.filter((footprint) => footprint.kind === 'jungle-grove').length,
+    ).toBeGreaterThan(10);
+    const texture = (flows[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material
+      .map!;
+    const offset = texture.offset.y;
+    art.update(0.5);
+    expect(texture.offset.y).toBeGreaterThan(offset);
+    art.update(0);
+    const frozen = texture.offset.y;
+    art.update(0);
+    expect(texture.offset.y).toBe(frozen);
     release(art.group, art.animated);
   });
   it('uses curved and tapered palm fronds with valid indexed normals', () => {

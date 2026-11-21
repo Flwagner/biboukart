@@ -729,8 +729,14 @@ export class Renderer {
     };
     const treePositions: THREE.Matrix4[] = [];
     const rockPositions: THREE.Matrix4[] = [];
+    const treePalette =
+      track.index === 7
+        ? ['#2f6d47', '#3c7d4f', '#4f8f55', '#35734a']
+        : ['#86ad64', '#719e59', '#a3ba70', '#8fb76d'];
     for (let i = 0; i < 400; i++) {
       const p = new THREE.Vector3((random() - 0.5) * 450, 0, (random() - 0.5) * 450);
+      // Keep the infield clear so the volcano and its lava read as the landmark.
+      if (track.index === 7 && p.length() < 105) continue;
       if (track.overlapsAnyRoad(p, 5) || p.length() > 225) continue;
       const s = 1 + random() * 2;
       p.y = track.terrainHeight(p);
@@ -741,17 +747,19 @@ export class Renderer {
           new THREE.Vector3(s * 1.6, s * 1.5, s * 1.4),
         );
         rockPositions.push(matrix);
-      } else if (track.index === 0) {
+      } else if (track.index === 0 || track.index === 7) {
+        const jungle = track.index === 7,
+          canopy = jungle ? 1.25 : 1;
         treePositions.push(
           new THREE.Matrix4().compose(
             p.clone().add(new THREE.Vector3(0, s * 2.5, 0)),
             new THREE.Quaternion(),
-            new THREE.Vector3(s * 1.65, s * 1.8, s * 1.5),
+            new THREE.Vector3(s * 1.65 * canopy, s * 1.8 * canopy, s * 1.5 * canopy),
           ),
         );
         const trunk = mesh(
           new THREE.CylinderGeometry(0.22, 0.35, s * 2, 5),
-          '#92704d',
+          jungle ? '#6b5037' : '#92704d',
           p.x,
           s + p.y,
           p.z,
@@ -767,7 +775,7 @@ export class Renderer {
       );
       treePositions.forEach((m, i) => {
         trees.setMatrixAt(i, m);
-        trees.setColorAt(i, new THREE.Color(['#86ad64', '#719e59', '#a3ba70', '#8fb76d'][i % 4]));
+        trees.setColorAt(i, new THREE.Color(treePalette[i % 4]));
       });
       trees.castShadow = true;
       trees.receiveShadow = true;
@@ -850,6 +858,42 @@ export class Renderer {
         asteroid.rotation.set(i * 0.3, i * 0.7, i * 0.2);
         asteroid.castShadow = false;
         this.world.add(asteroid);
+        continue;
+      }
+      if (track.index === 7) {
+        const x = Math.sin(i * 2.4) * 300,
+          z = Math.cos(i * 2.4) * 290;
+        if (i % 3 === 0) {
+          const height = 64 + (i % 4) * 16,
+            radius = 34 + (i % 3) * 7,
+            peak = mesh(
+              alpinePeakGeometry(radius, height, i),
+              i % 2 ? '#4a3a31' : '#3b312c',
+              x,
+              height / 2 - 2,
+              z,
+            );
+          this.world.add(peak);
+          const crater = mesh(
+            new THREE.CylinderGeometry(radius * 0.2, radius * 0.26, 2.4, 10),
+            '#ff8a3c',
+            x,
+            height - 1.6,
+            z,
+          );
+          crater.material = lampMaterial('#ff8a3c');
+          this.world.add(crater);
+        } else {
+          const hill = mesh(
+            new THREE.SphereGeometry(1, 12, 8),
+            ['#2f5f42', '#3b6f49', '#274f38'][i % 3],
+            x,
+            7,
+            z,
+          );
+          hill.scale.set(34 + (i % 3) * 12, 15 + (i % 4) * 6, 30 + (i % 2) * 8);
+          this.world.add(hill);
+        }
         continue;
       }
       const hill = mesh(

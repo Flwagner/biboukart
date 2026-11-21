@@ -10,6 +10,7 @@ export const circuitAtmospheres = [
   { sun: '#ffdcba', skyLight: '#cbd7f0', bounce: '#7d8499', exposure: 1.12 },
   { sun: '#ffe3ba', skyLight: '#f2e2c6', bounce: '#a87f57', exposure: 1.06 },
   { sun: '#b9c6ff', skyLight: '#39457a', bounce: '#111426', exposure: 0.92 },
+  { sun: '#ffcf8f', skyLight: '#c8ddc2', bounce: '#2f4d34', exposure: 1.04 },
 ] as const;
 
 export interface DecorFootprint {
@@ -74,6 +75,8 @@ export class BiomeDetails {
   }[] = [];
   private materials = new Map<string, THREE.Material>();
   private houseUpdate: ((dt: number) => void) | null = null;
+  private lava: THREE.DataTexture | null = null;
+  private molten: THREE.MeshBasicMaterial | null = null;
 
   constructor(private track: Track) {
     this.group.name = `biome-details-${track.index}`;
@@ -85,6 +88,7 @@ export class BiomeDetails {
     if (track.index === 4) this.city();
     if (track.index === 5) this.house();
     if (track.index === 6) this.space();
+    if (track.index === 7) this.jungleVolcano();
     if (track.index > 0 && track.index !== 5 && track.index !== 6) this.clouds();
   }
   private house() {
@@ -230,6 +234,319 @@ export class BiomeDetails {
     this.rocket(95, 26, 0.15, 0, '#cdd8ff');
     this.rocket(140, 42, 0.1, 2.2, '#9fd8e9');
     this.rocket(185, 58, 0.065, 4.1, '#e7b4d6');
+  }
+  /** Molten rock texture: dark basalt crust crossed by bright, flowing veins. */
+  private moltenMaterial() {
+    if (!this.molten) {
+      const pixels = new Uint8Array(64 * 64 * 4);
+      for (let y = 0; y < 64; y++)
+        for (let x = 0; x < 64; x++) {
+          const wave =
+            Math.sin(x * 0.35 + y * 0.21) +
+            Math.sin(x * 0.13 - y * 0.47 + 2.1) +
+            Math.sin((x + y) * 0.62 + 0.7) * 0.6;
+          const heat = 0.42 + 0.58 * THREE.MathUtils.clamp(wave * 0.22 + 0.5, 0, 1) ** 1.2;
+          pixels.set([145 + heat * 110, 42 + heat * 143, 14 + heat * 45, 255], (y * 64 + x) * 4);
+        }
+      const texture = new THREE.DataTexture(pixels, 64, 64);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(1, 1);
+      texture.magFilter = texture.minFilter = THREE.LinearFilter;
+      texture.needsUpdate = true;
+      this.lava = texture;
+      this.molten = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      });
+    }
+    return this.molten;
+  }
+  private lavaRibbon(points: number[][], width: number) {
+    const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z))),
+      segments = 84,
+      vertices: number[] = [],
+      uvs: number[] = [],
+      indices: number[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const u = i / segments,
+        point = curve.getPointAt(u),
+        tangent = curve.getTangentAt(u),
+        normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize(),
+        half = width * (0.54 + 0.46 * u) * 0.5;
+      for (const side of [-1, 1])
+        vertices.push(
+          point.x + normal.x * half * side,
+          point.y + 0.035,
+          point.z + normal.z * half * side,
+        );
+      uvs.push(0, u * 3, 1, u * 3);
+      if (i < segments) {
+        const a = i * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    const mesh = new THREE.Mesh(geometry, this.moltenMaterial());
+    mesh.name = 'volcanic-flow';
+    this.animated.add(mesh);
+    return mesh;
+  }
+  private jungleTree(parent: THREE.Group, scale: number, seed: number) {
+    const trunk = this.part(
+      parent,
+      new THREE.CylinderGeometry(0.55, 0.95, 1, 7),
+      seed % 2 ? '#6b4f36' : '#5d4430',
+      [0, 2.8 * scale, 0],
+      [1, 5.6 * scale, 1],
+    );
+    trunk.rotation.z = Math.sin(seed * 1.7) * 0.07;
+    const greens = ['#2f6d47', '#3c7d4f', '#4f8f55'];
+    for (let lobe = 0; lobe < 4; lobe++) {
+      const canopy = this.oval(
+        parent,
+        greens[(Math.round(seed) + lobe) % greens.length],
+        [
+          Math.sin(seed + lobe * 2.1) * 2.2 * scale,
+          (5.3 + lobe * 0.55) * scale,
+          Math.cos(seed + lobe * 1.7) * 2.2 * scale,
+        ],
+        [3.2 * scale, 1.5 * scale, 3.2 * scale],
+      );
+      canopy.rotation.y = seed + lobe;
+    }
+    for (let vine = 0; vine < 2; vine++)
+      this.part(
+        parent,
+        new THREE.CylinderGeometry(0.06, 0.09, 1, 4),
+        '#6f8f4e',
+        [
+          Math.sin(seed + vine * 2.4) * 2.3 * scale,
+          (3.5 - vine * 0.7) * scale,
+          Math.cos(seed + vine * 1.9) * 2.2 * scale,
+        ],
+        [1, (2.5 - vine * 0.5) * scale, 1],
+      );
+  }
+  private jungleVolcano() {
+    const volcano = new THREE.Group();
+    volcano.name = 'jungle-volcano';
+    this.group.add(volcano);
+    this.footprints.push({ x: 0, z: 0, radius: 44, kind: 'volcano' });
+    // One tapered cone, warped by hand so every flank reads as stacked basalt.
+    const cone = new THREE.CylinderGeometry(0.23, 1, 1, 13, 6),
+      positions = cone.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) {
+      const height = positions.getY(i) + 0.5,
+        angle = Math.atan2(positions.getZ(i), positions.getX(i)),
+        warp =
+          1 + Math.sin(angle * 3 + height * 7) * 0.055 + Math.sin(angle * 5 - height * 3) * 0.025;
+      positions.setX(i, positions.getX(i) * warp);
+      positions.setZ(i, positions.getZ(i) * warp);
+    }
+    cone.computeVertexNormals();
+    this.part(volcano, cone, '#4a3a31', [0, 30, 0], [40, 60, 40]);
+    for (const [y, radius, color] of [
+      [8, 38.4, '#5b4436'],
+      [19, 31.8, '#3b312c'],
+      [31, 24.3, '#5b4436'],
+      [44, 16.4, '#3b312c'],
+    ] as const)
+      this.part(
+        volcano,
+        new THREE.CylinderGeometry(1, 1, 1, 13),
+        color,
+        [0, y, 0],
+        [radius, 1.05, radius],
+      );
+    // Moss and ash streaks break up the flanks.
+    for (let patch = 0; patch < 9; patch++) {
+      const angle = patch * 2.4,
+        radius = 24 + (patch % 3) * 4;
+      this.oval(
+        volcano,
+        patch % 2 ? '#4d6a3a' : '#6b7c52',
+        [Math.sin(angle) * radius, 8 + (patch % 4) * 9, Math.cos(angle) * radius],
+        [3 + (patch % 3), 1.5, 2.4],
+      );
+    }
+    // Crater rim, dark throat and the glowing pool at the summit.
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(9.2, 1.4, 7, 18), this.material('#332824'));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 60;
+    volcano.add(rim);
+    this.part(
+      volcano,
+      new THREE.CylinderGeometry(1, 1, 1, 15),
+      '#221b18',
+      [0, 59.7, 0],
+      [7.8, 1.3, 7.8],
+    );
+    const summit = new THREE.Mesh(
+      new THREE.CylinderGeometry(7, 7.5, 0.55, 15),
+      this.moltenMaterial(),
+    );
+    summit.name = 'summit-lava';
+    summit.position.y = 60.25;
+    this.animated.add(summit);
+    const fountain = new THREE.Mesh(new THREE.ConeGeometry(3, 9, 9), this.moltenMaterial());
+    fountain.name = 'summit-fountain';
+    fountain.position.y = 64.5;
+    this.animated.add(fountain);
+    // The lava river follows the south-east flank, then crosses the infield.
+    this.lavaRibbon(
+      [
+        [2, 59.6, 6],
+        [8, 46, 17],
+        [12, 34, 24],
+        [17, 22, 27],
+        [23, 10, 31],
+        [30, 2.5, 38],
+        [38, 0.4, 46],
+        [44, 0.24, 52],
+        [48, 0.2, 56],
+      ],
+      9,
+    );
+    this.lavaRibbon(
+      [
+        [30, 2.5, 38],
+        [37, 0.9, 45],
+        [42, 0.3, 57],
+        [38, 0.22, 68],
+      ],
+      4.5,
+    );
+    const lake = new THREE.Mesh(
+      new THREE.CylinderGeometry(12.4, 13.4, 0.55, 18),
+      this.moltenMaterial(),
+    );
+    lake.name = 'lava-lake';
+    lake.position.set(48, 0.2, 56);
+    this.animated.add(lake);
+    const lakeGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(20, 22),
+      new THREE.MeshBasicMaterial({
+        color: '#ff7a33',
+        transparent: true,
+        opacity: 0.17,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      }),
+    );
+    lakeGlow.rotation.x = -Math.PI / 2;
+    lakeGlow.position.set(48, 0.34, 56);
+    this.animated.add(lakeGlow);
+    this.footprints.push({ x: 48, z: 56, radius: 15, kind: 'lava-lake' });
+    const shore = new THREE.Mesh(
+      new THREE.TorusGeometry(13, 1.45, 6, 20),
+      this.material('#332824'),
+    );
+    shore.rotation.x = Math.PI / 2;
+    shore.position.set(48, 0.3, 56);
+    this.group.add(shore);
+    for (let rock = 0; rock < 12; rock++) {
+      const angle = (rock / 12) * Math.PI * 2;
+      this.part(
+        volcano,
+        new THREE.DodecahedronGeometry(1, 0),
+        rock % 2 ? '#3b312c' : '#5b4436',
+        [48 + Math.sin(angle) * 15.4, 0.5, 56 + Math.cos(angle) * 15.4],
+        [1.3 + (rock % 3) * 0.4, 1 + (rock % 2) * 0.5, 1.2 + (rock % 3) * 0.3],
+      );
+    }
+    for (let patch = 0; patch < 6; patch++) {
+      const angle = patch * 1.1,
+        distance = 22 + (patch % 3) * 4,
+        scorched = new THREE.Mesh(
+          new THREE.CircleGeometry(4 + (patch % 3) * 2, 10),
+          this.material('#2f2a22'),
+        );
+      scorched.rotation.x = -Math.PI / 2;
+      scorched.position.set(48 + Math.sin(angle) * distance, 0.05, 56 + Math.cos(angle) * distance);
+      this.group.add(scorched);
+    }
+    for (let boulder = 0; boulder < 18; boulder++) {
+      const angle = 2 + boulder * 0.28,
+        distance = 46 + (boulder % 4) * 8;
+      this.part(
+        volcano,
+        new THREE.DodecahedronGeometry(1, 0),
+        boulder % 3 ? '#3b312c' : '#4d6a3a',
+        [Math.sin(angle) * distance, 0.65, Math.cos(angle) * distance],
+        [1 + (boulder % 4) * 0.45, 0.8 + (boulder % 3) * 0.4, 1 + (boulder % 3) * 0.35],
+      );
+    }
+    for (let crack = 0; crack < 7; crack++) {
+      const angle = 0.55 + crack * 0.42,
+        distance = 43 + (crack % 3) * 5;
+      this.box(
+        volcano,
+        crack % 2 ? '#d95d3c' : '#ff9347',
+        [Math.sin(angle) * distance, 0.08, Math.cos(angle) * distance],
+        [3.2, 0.1, 0.55],
+        true,
+      ).rotation.y = angle + Math.PI / 2;
+    }
+    for (let puff = 0; puff < 4; puff++) {
+      const angle = (puff / 4) * Math.PI * 2;
+      this.drift(
+        new THREE.Vector3(48 + Math.sin(angle) * 3.5, 0.9, 56 + Math.cos(angle) * 3.5),
+        true,
+        puff / 4,
+      );
+    }
+    for (let puff = 0; puff < 5; puff++) this.drift(new THREE.Vector3(0, 61, 0), true, puff / 5);
+    // Track-side groves and a ring of emergent trees inside the loop.
+    for (let i = 0; i < 16; i++) {
+      const grove = this.site(
+        (i + 0.35) / 16,
+        (i % 2 ? 1 : -1) * (24 + (i % 3) * 5),
+        9,
+        'jungle-grove',
+      );
+      this.jungleTree(grove, 1.05 + (i % 3) * 0.3, i * 1.7);
+    }
+    for (let i = 0; i < 9; i++) {
+      const angle = 0.45 + (i / 9) * Math.PI * 2;
+      if (angle > 0.3 && angle < 1.45) continue;
+      const radius = 52 + (i % 3) * 10,
+        root = new THREE.Group();
+      root.name = 'jungle-emergent';
+      root.position.set(Math.sin(angle) * radius, 0, Math.cos(angle) * radius);
+      this.group.add(root);
+      this.jungleTree(root, 1.7 + (i % 3) * 0.35, i * 2.3);
+      this.footprints.push({
+        x: root.position.x,
+        z: root.position.z,
+        radius: 14,
+        kind: 'jungle-emergent',
+      });
+    }
+    for (let i = 0; i < 22; i++) {
+      const fern = this.site(
+        (i + 0.5) / 22,
+        (i % 2 ? 1 : -1) * (18 + (i % 3) * 2),
+        3.5,
+        'jungle-fern',
+      );
+      for (let leaf = 0; leaf < 4; leaf++) {
+        const blade = this.part(
+          fern,
+          new THREE.ConeGeometry(0.42, 2.3, 5),
+          ['#3f814e', '#4f9b58', '#2f7045'][(i + leaf) % 3],
+          [Math.sin(leaf * 2.2 + i) * 0.7, 0.9, Math.cos(leaf * 1.7 + i) * 0.7],
+          [1, 1, 0.45],
+        );
+        blade.rotation.z = Math.sin(leaf * 2.2 + i) * 0.45;
+      }
+    }
   }
   private rocket(radius: number, height: number, speed: number, phase: number, color: string) {
     const rocket = new THREE.Group();
@@ -506,6 +823,8 @@ export class BiomeDetails {
     this.clock += dt;
     this.houseUpdate?.(dt);
     if (this.water) this.water.offset.set(this.clock * 0.006, Math.sin(this.clock * 0.25) * 0.015);
+    if (this.lava)
+      this.lava.offset.set(Math.sin(this.clock * 0.35) * 0.06, (this.clock * 0.09) % 1);
     for (const orbiter of this.orbiters) {
       const angle = this.clock * orbiter.speed + orbiter.phase;
       orbiter.mesh.position.set(

@@ -8,17 +8,17 @@ import { loadSelection } from '../src/storage';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('mountain, city and house destinations', () => {
-  it('offers seven distinct circuits with previews based on their real curves', () => {
-    expect(trackDefinitions).toHaveLength(7);
+  it('offers eight distinct circuits with previews based on their real curves', () => {
+    expect(trackDefinitions).toHaveLength(8);
     const paths = trackDefinitions.map((_, index) => trackPreviewPath(index));
-    expect(new Set(paths).size).toBe(7);
+    expect(new Set(paths).size).toBe(8);
     paths.forEach((path) => {
       expect(path).toMatch(/^M.* Z$/);
       expect(path).not.toMatch(/NaN|Infinity/);
     });
   });
 
-  it.each([3, 4, 5, 6])('restores saved destination %i', (track) => {
+  it.each([3, 4, 5, 6, 7])('restores saved destination %i', (track) => {
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
     vi.stubGlobal('localStorage', {
       getItem: () =>
@@ -31,7 +31,7 @@ describe('mountain, city and house destinations', () => {
     expect(loadSelection()?.track).toBe(track);
   });
 
-  it.each([0, 1, 2, 3, 4, 5, 6])(
+  it.each([0, 1, 2, 3, 4, 5, 6, 7])(
     'keeps scenery footprints clear of every road on circuit %i',
     (index) => {
       const track = new Track(index),
@@ -41,6 +41,10 @@ describe('mountain, city and house destinations', () => {
         expect(decor.group.children.length).toBeGreaterThan(60);
       }
       if (index === 6) expect(decor.group.name).toBe('space-scenery');
+      if (index === 7) {
+        expect(decor.group.name).toBe('jungle-scenery');
+        expect(decor.group.children.length).toBeGreaterThan(80);
+      }
       const corridors = track.routes.flatMap((route) =>
         Array.from({ length: 129 }, (_, step) => ({
           point: track.routeAt(route, step / 128),

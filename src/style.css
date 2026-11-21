@@ -712,6 +712,19 @@ select {
 .track-art.track-6 path {
   stroke: #b9c9ff;
 }
+.track-art.track-7 {
+  background: radial-gradient(circle at 54% 62%, #ffb45c 0%, #d95d3c 14%, #2d5a3c 38%, #102e25 76%);
+}
+.track-art.track-7:before {
+  width: 120px;
+  height: 120px;
+  right: -26px;
+  top: -34px;
+  background: #ffdca34a;
+}
+.track-art.track-7 path {
+  stroke: #ffe3a8;
+}
 .track-number {
   position: absolute;
   bottom: 10px;

@@ -10,7 +10,7 @@ test('the miniature house circuit: menu card, table start and every room', async
   await page.goto('/');
   await page.locator('#play').click();
   await page.locator('#next').click();
-  await expect(page.locator('.track-card')).toHaveCount(6);
+  await expect(page.locator('.track-card')).toHaveCount(8);
   await page.getByRole('button', { name: /Maison des miettes/ }).click();
   await expect(page.locator('[data-track="5"]')).toHaveAttribute('aria-pressed', 'true');
   await page.screenshot({ path: 'test-results/house-menu.png', fullPage: true });

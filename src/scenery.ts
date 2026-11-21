@@ -393,6 +393,69 @@ export function scenery(track: Track) {
       add(buoy, '#79e7ff', [0.42, 0.42, 0.42], [0, 3.35, 0]);
       group.add(buoy);
     }
+  } else if (track.index === 7) {
+    group.name = 'jungle-scenery';
+    // Curved palms and curling ferns crowd the shoulders without touching them.
+    for (let i = 0; i < 26; i++) {
+      const p = location(i / 26, (i % 2 ? 1 : -1) * (17 + (i % 4) * 3), 8),
+        palm = new THREE.Group();
+      palm.position.copy(p);
+      palm.rotation.y = i * 1.7;
+      const trunk = new THREE.Mesh(
+        new THREE.TubeGeometry(
+          new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.5, 3.2, 0),
+            new THREE.Vector3(0, 6.6, 0.4),
+          ]),
+          7,
+          0.34,
+          7,
+          false,
+        ),
+        material('#7d5d40'),
+      );
+      palm.add(trunk);
+      for (let j = 0; j < 7; j++) {
+        const leaves = material(j % 2 ? '#2f7a52' : '#438f5f');
+        leaves.side = THREE.DoubleSide;
+        const leaf = new THREE.Mesh(palmFrondGeometry(), leaves);
+        leaf.position.set(0, 6.6, 0.4);
+        leaf.rotation.y = (j * Math.PI) / 3.5;
+        leaf.scale.setScalar(0.9 + (i % 3) * 0.12);
+        palm.add(leaf);
+      }
+      group.add(palm);
+    }
+    for (let i = 0; i < 28; i++) {
+      const p = location(i / 28, (i % 2 ? 1 : -1) * (track.width / 2 + 2.4), 2),
+        torch = new THREE.Group();
+      torch.position.copy(p);
+      add(torch, '#6b4f36', [0.16, 2.6, 0.16], [0, 1.3, 0]);
+      add(torch, '#8a6747', [0.6, 0.18, 0.6], [0, 2.55, 0]);
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.3, 0.9, 7),
+        new THREE.MeshBasicMaterial({ color: '#ff9d4d', toneMapped: false }),
+      );
+      flame.position.y = 3;
+      torch.add(flame);
+      group.add(torch);
+    }
+    for (let i = 0; i < 34; i++) {
+      const p = location(i / 34, (i % 2 ? 1 : -1) * (13 + (i % 3) * 2.5), 4),
+        ferns = new THREE.Group();
+      ferns.position.copy(p);
+      for (let leaf = 0; leaf < 5; leaf++) {
+        const frond = new THREE.Mesh(
+          new THREE.ConeGeometry(0.34, 2.1, 5),
+          material(['#3f814e', '#4f9b58', '#2f7045'][(i + leaf) % 3]),
+        );
+        frond.position.set(Math.sin(leaf * 1.8 + i) * 0.75, 0.85, Math.cos(leaf * 2.1 + i) * 0.75);
+        frond.rotation.z = Math.sin(leaf * 2.3 + i) * 0.5;
+        ferns.add(frond);
+      }
+      group.add(ferns);
+    }
   }
   group.traverse((object) => {
     if (object instanceof THREE.Mesh) {
@@ -466,6 +529,32 @@ export function scenery(track: Track) {
       beacon.position.set(0, 7.1, -1.5);
       landmark.add(beacon);
       for (const side of [-1, 1]) add(landmark, '#56689f', [1.3, 1.5, 0.16], [side * 3, 1.5, 1.4]);
+    } else if (track.index === 7) {
+      // A moss-covered stone shrine marks the jungle fork.
+      add(landmark, '#6f7464', [6, 0.6, 5.4], [0, 0.3, 0]);
+      add(landmark, '#7c806b', [4.6, 0.5, 4.2], [0, 0.85, 0]);
+      for (const side of [-1, 1]) {
+        add(landmark, '#626b58', [0.8, 3.4, 0.8], [side * 1.55, 2.3, 0]);
+        add(landmark, '#884f37', [0.95, 0.3, 0.95], [side * 1.55, 0.65, 0]);
+      }
+      add(landmark, '#7c806b', [4.6, 0.7, 1.2], [0, 4.2, 0]);
+      add(landmark, '#5d6852', [3.4, 0.35, 1.7], [0, 4.7, 0]);
+      for (let moss = 0; moss < 5; moss++)
+        add(
+          landmark,
+          moss % 2 ? '#4d7a44' : '#6f9a54',
+          [0.9 + (moss % 3) * 0.6, 0.14, 0.7],
+          [-1.6 + moss * 0.8, 4.85, Math.sin(moss) * 0.4],
+        );
+      for (const side of [-1, 1])
+        add(landmark, '#4d7a44', [0.15, 2.2, 0.15], [side * 2.2, 3.1, 0.5]);
+      const ember = new THREE.Mesh(
+        new THREE.SphereGeometry(0.55, 10, 7),
+        new THREE.MeshBasicMaterial({ color: '#ff8a3c', toneMapped: false }),
+      );
+      ember.position.set(0, 2.1, 0);
+      landmark.add(ember);
+      add(landmark, '#ff9d4d', [0.35, 1.4, 0.35], [0, 1.45, 0]);
     } else {
       add(landmark, track.index === 3 ? '#ad815f' : '#d6b49a', [6, 4, 5], [0, 2, 0]);
       for (const side of [-1, 1]) {
@@ -552,6 +641,30 @@ export function obstacleModel(obstacle: Obstacle) {
     }
     block('#f5e7c8', [2.2, 1.6, 0.18], [0, 1.6, 1.42]);
     block('#b23a48', [1.6, 0.35, 0.22], [0, 1.6, 1.46]);
+  } else if (obstacle.kind === 'magma') {
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6, 0), material('#4a3a31'));
+    rock.scale.set(1.15, 1, 1);
+    rock.position.y = 1.1;
+    group.add(rock);
+    const glow = new THREE.MeshBasicMaterial({ color: '#ff8a3c', toneMapped: false });
+    for (let crack = 0; crack < 5; crack++) {
+      const vein = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.08), glow);
+      vein.position.set(
+        Math.sin(crack * 2.2) * 1.25,
+        0.8 + (crack % 3) * 0.35,
+        Math.cos(crack * 1.7) * 1.25,
+      );
+      vein.rotation.set(crack * 0.5, crack * 0.8, crack * 0.3);
+      group.add(vein);
+    }
+    for (let shard = 0; shard < 3; shard++) {
+      const basalt = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.34 + shard * 0.08, 0),
+        material(shard % 2 ? '#332824' : '#5b4436'),
+      );
+      basalt.position.set(Math.sin(shard * 2.4) * 1.8, 0.25, Math.cos(shard * 2.4) * 1.8);
+      group.add(basalt);
+    }
   } else {
     const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), material('#e88e6a'));
     shell.scale.y = 0.5;

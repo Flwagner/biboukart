@@ -1,5 +1,15 @@
 # Évolutions
 
+## Jungle du cratère — huitième circuit tropical
+
+- Nouveau circuit indépendant, ajouté sans modifier les tracés, décors, indices ou comportements des sept circuits existants. Boucle de **1 087 m** autour d'un volcan central, sur une piste en basalte aux bordures sable et mousse.
+- Ambiance tropicale : jungle dense de grands arbres, palmiers courbes, fougères et lianes, brume chaude, torches le long des bas-côtés et sanctuaire moussu sur l'alternative « Sentier ».
+- Volcan : cône stratifié de 52 unités, cratère incandescent, deux coulées de lave animées, mare de lave avec rive de basalte et fumerolles. La coulée reste dans l'intérieur de la boucle, avec une marge vérifiée par rapport aux deux routes.
+- Raccourci technique de 167 m et alternative large de 282 m, deux cadeaux sur l'alternative. Nouvel obstacle mobile : un rocher volcanique aux fissures lumineuses.
+- Intégration : entrée dans `trackDefinitions`, valeurs indexées dans `Track`, huitième profil de lumière, ciel de brume tropicale, couleur de route, décors `jungle-scenery`, reliefs lointains et texture de lave procédurale animée.
+- Tests : les matrices de routes, décors, reliefs, raccourcis, alternatives et courses complètes incluent l'index 7 ; `tests/generalArt.test.ts` vérifie le volcan, les deux coulées, la mare et l'animation de la lave. Les scénarios navigateur couvrent le menu, la sauvegarde, l'art en solo/quatre vues et les trois difficultés.
+- Captures : `test-results/destination-7-menu.png`, `test-results/destination-7-race.png`, `test-results/circuit-art-7-solo.png`, `test-results/alternative-7.png`, `test-results/circuit-overview-7.png`.
+
 ## Orbite des étoiles — septième circuit spatial
 
 - Nouveau circuit indépendant, ajouté sans modifier les tracés, décors, indices ou comportements des six circuits existants. Boucle de **1 130 m** sur une piste sombre aux bordures cyan et violet.
