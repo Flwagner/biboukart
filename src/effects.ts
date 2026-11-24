@@ -149,13 +149,13 @@ export class RaceEffects {
   isCollecting(id: number) {
     return (this.karts[id]?.pickupAge ?? BURST_SECONDS) < BURST_SECONDS;
   }
-  impact(id: number, position: THREE.Vector3, splash: boolean) {
+  impact(id: number, position: THREE.Vector3, splash: boolean, color?: string) {
     const effect = this.karts[id];
     if (!effect) return;
     effect.impactAge = 0;
     effect.impact.position.copy(position);
     const material = (effect.impact.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
-    material.color.set(splash ? '#53456e' : '#ffbd62');
+    material.color.set(color ?? (splash ? '#53456e' : '#ffbd62'));
   }
   update(dt: number, racers: readonly Racer[], reduced: boolean) {
     this.clock += dt;

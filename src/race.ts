@@ -17,6 +17,10 @@ export interface Input {
   use: boolean;
 }
 export const idleInput = (): Input => ({ throttle: 0, brake: 0, steer: 0, use: false });
+/** A picked gift stays hidden and unusable during this short roulette. */
+export const ROULETTE_SECONDS = 0.85;
+/** How long a rival's view stays partly covered by mud. */
+export const MUD_SECONDS = 3.5;
 export interface Racer {
   id: number;
   human: boolean;
@@ -46,8 +50,11 @@ export interface Racer {
   finished: boolean;
   finishTime: number;
   item: Item | null;
+  itemRoulette: number;
   boost: number;
   shield: number;
+  mud: number;
+  mudSeed: number;
   giant: number;
   giantScale: number;
   stun: number;
@@ -136,8 +143,11 @@ export class Race {
         finished: false,
         finishTime: 0,
         item: null,
+        itemRoulette: 0,
         boost: 0,
         shield: 0,
+        mud: 0,
+        mudSeed: 0,
         giant: 0,
         giantScale: 1,
         stun: 0,
@@ -190,8 +200,8 @@ export class Race {
   chooseItem(rank: number): Item {
     const pool: Item[] =
       rank < 2
-        ? ['shield', 'trap', 'missile', 'turbo', 'giant', 'shockwave']
-        : ['turbo', 'missile', 'turbo', 'shield', 'trap', 'giant', 'shockwave'];
+        ? ['shield', 'trap', 'missile', 'turbo', 'giant', 'shockwave', 'mud']
+        : ['turbo', 'missile', 'turbo', 'shield', 'trap', 'giant', 'shockwave', 'mud'];
     return pool[Math.floor(this.random() * pool.length)];
   }
   ai(
@@ -199,7 +209,8 @@ export class Race {
     preferShortcut = this.difficulty === 'hard' || (this.difficulty === 'normal' && r.id % 3 === 0),
   ): Input {
     const profile = difficulties[this.difficulty],
-      spec = karts[r.config.kart];
+      spec = karts[r.config.kart],
+      muddy = r.mud > 0;
     const n = this.track.surface(r.pos, r.route),
       lookAhead =
         n.route !== 'main'
@@ -226,7 +237,7 @@ export class Race {
     // Pure pursuit: requested yaw follows curvature, using the kart's real steering limits.
     let steer =
       Math.abs(r.speed) > 5
-        ? (2 * Math.abs(r.speed) * Math.sin(angle) * profile.precision) /
+        ? (2 * Math.abs(r.speed) * Math.sin(angle) * profile.precision * (muddy ? 0.5 : 1)) /
           (lookAhead * spec.handling)
         : angle * 1.5;
     for (const other of this.racers)
@@ -238,6 +249,8 @@ export class Race {
             Math.sign(delta.dot(new THREE.Vector3(Math.cos(r.heading), 0, -Math.sin(r.heading)))) *
             -0.35;
       }
+    // Mud on the visor makes a bot weave and brake earlier, without changing its physical limits.
+    if (muddy) steer += Math.sin(this.elapsed * 9 + r.id * 2.3) * 0.42;
     const preferAlternative = (r.id + r.lap) % 2 === 0;
     const later = this.track.target(n, lookAhead * 1.5, preferShortcut, preferAlternative),
       halfway = this.track.target(n, lookAhead * 0.75, preferShortcut, preferAlternative);
@@ -251,6 +264,7 @@ export class Race {
         profile.speed *
         (r.boost > 0 ? 1.5 : 1) *
         (r.slow > 0 ? 0.5 : 1) *
+        (muddy ? 0.82 : 1) *
         (Math.abs(angle) > 0.6 ? profile.cornerSpeed : 1),
     );
     return {
@@ -261,7 +275,7 @@ export class Race {
           : 0,
       // Convert signed world-heading correction to the same steering convention as humans.
       steer: -THREE.MathUtils.clamp(steer, -1, 1),
-      use: !!r.item && this.random() < profile.itemChance,
+      use: !!r.item && this.random() < profile.itemChance * (muddy ? 0.55 : 1),
     };
   }
   keepChildOnRoad(r: Racer, dt: number): boolean {
@@ -327,7 +341,15 @@ export class Race {
     target.speed = 0;
   }
   use(r: Racer) {
-    if (!r.item || r.itemCooldown > 0 || r.stun > 0 || r.knockedTime > 0 || r.finished) return;
+    if (
+      !r.item ||
+      r.itemRoulette > 0 ||
+      r.itemCooldown > 0 ||
+      r.stun > 0 ||
+      r.knockedTime > 0 ||
+      r.finished
+    )
+      return;
     const item = r.item;
     r.item = null;
     r.itemCooldown = 0.4;
@@ -335,6 +357,21 @@ export class Race {
     if (item === 'turbo') r.boost = Math.min(4, r.boost + 2.2);
     if (item === 'shield') r.shield = 7;
     if (item === 'giant') r.giant = 7;
+    if (item === 'mud') {
+      // Mud covers every rival's view. Shields absorb the splat like any other attack.
+      for (const other of this.racers) {
+        if (other === r || other.finished) continue;
+        if (other.shield > 0) {
+          other.shield = 0;
+          other.immune = 1;
+          this.onEvent('block', other.id);
+          continue;
+        }
+        other.mud = MUD_SECONDS;
+        other.mudSeed = this.random();
+        this.onEvent('mudHit', other.id);
+      }
+    }
     if (item === 'shockwave') {
       r.shockPending = true;
       if (!r.airborne) {
@@ -383,19 +420,23 @@ export class Race {
         r.boost = 0;
         continue;
       }
-      const wasKnocked = r.knockedTime > 0;
+      const wasKnocked = r.knockedTime > 0,
+        rouletteBefore = r.itemRoulette;
       for (const key of [
         'boost',
         'shield',
         'immune',
         'slow',
         'itemCooldown',
+        'itemRoulette',
+        'mud',
         'giant',
         'stun',
         'shockPulse',
         'knockedTime',
       ] as const)
         r[key] = Math.max(0, r[key] - dt);
+      if (rouletteBefore > 0 && r.itemRoulette === 0) this.onEvent('itemReady', r.id);
       r.giantScale += THREE.MathUtils.clamp((r.giant > 0 ? 2 : 1) - r.giantScale, -dt * 3, dt * 3);
       if (wasKnocked && r.knockedTime === 0) this.respawn(r);
       let input =
@@ -529,6 +570,7 @@ export class Race {
         for (const box of this.pickups)
           if (box.cooldown === 0 && r.pos.distanceTo(box.pos) < 2.7) {
             r.item = this.chooseItem(this.ranking.indexOf(r));
+            r.itemRoulette = ROULETTE_SECONDS;
             box.cooldown = 5;
             this.onEvent('pickup', r.id);
             if (child) this.use(r);

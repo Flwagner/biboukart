@@ -1,5 +1,13 @@
 # Évolutions
 
+## Roulette de cadeaux, tache de boue et nouveaux sons
+
+- **Roulette de cadeaux** : chaque objet récupéré reste caché et inutilisable pendant **0,85 s**. Le HUD fait défiler les icônes puis affiche l'objet réel ; un son de rouleau accompagne l'ouverture et un carillon confirme que l'objet est prêt. Le mode enfant continue d'activer l'objet automatiquement, mais seulement après la roulette.
+- **Tache de boue** : septième cadeau. Le lanceur projette une éclaboussure brune sur **tous les autres pilotes** pendant **3,5 s**. Chaque vue humaine est partiellement recouverte par un voile de taches irrégulières, dont une large tache centrale, avec une orientation différente par victime ; le HUD, la mini-carte et les commandes tactiles restent lisibles. Le lanceur garde une vue nette. Le bouclier absorbe la boue comme les autres attaques. Les bots sont ralentis, leur trajectoire ondule et ils utilisent moins souvent leurs objets, ce qui rend l'objet utile aussi en solo.
+- **Sons** : nouveau rouleau de cadeau, carillon de validation, éclaboussure de boue et impact sur la visière, tous synthétisés localement. Chaque objet reçoit en plus une courte activation pitchée qui rend son utilisation immédiatement identifiable ; les usages des bots restent audibles à volume réduit. Les éclaboussures 3D réutilisent le pool de particules existant avec une couleur brune.
+- **Intégration** : `itemNames`/`itemIcons`, pools de `chooseItem`, champs `itemRoulette`/`mud`/`mudSeed` de `Racer`, HUD de `main.ts`, styles `style.css`, effets `effects.ts` et sons `sounds.ts`. Aucun asset externe ni nouvelle dépendance.
+- **Tests** : distribution des sept objets, roulette bloquante, boue sur tous les rivaux sauf le lanceur, absorption par bouclier, expiration, trouble de l'IA, activation différée en mode enfant, rendu audio des quatre nouveaux sons et voile de boue sur la bonne vue en écran partagé. Validation : **370 tests unitaires et 94 scénarios navigateur réussis**, build TypeScript/Vite et test statique de production validés.
+
 ## Jungle du cratère — huitième circuit tropical
 
 - Nouveau circuit indépendant, ajouté sans modifier les tracés, décors, indices ou comportements des sept circuits existants. Boucle de **1 087 m** autour d'un volcan central, sur une piste en basalte aux bordures sable et mousse.

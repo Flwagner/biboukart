@@ -8,6 +8,7 @@ export class Audio {
   master: GainNode | null = null;
   musicBus: GainNode | null = null;
   effectsBus: GainNode | null = null;
+  distantBus: GainNode | null = null;
   musicSource: AudioBufferSourceNode | null = null;
   musicBuffer: AudioBuffer | null = null;
   private engine: OscillatorNode | null = null;
@@ -71,6 +72,10 @@ export class Audio {
         this.master.connect(compressor).connect(context.destination);
         this.musicBus.connect(this.master);
         this.effectsBus.connect(this.master);
+        // Rivals' item activations remain audible but sit behind the local players.
+        this.distantBus = context.createGain();
+        this.distantBus.gain.value = 0.45;
+        this.distantBus.connect(this.effectsBus);
         this.noiseBuffer = makeNoise(context);
         this.engine = context.createOscillator();
         this.engineHarmonic = context.createOscillator();
@@ -111,9 +116,9 @@ export class Audio {
       /* Sound effects remain usable if offline synthesis is unavailable. */
     }
   }
-  play(kind: string, item?: Item) {
+  play(kind: string, item?: Item, distant = false) {
     const context = this.context,
-      output = this.effectsBus,
+      output = distant ? this.distantBus : this.effectsBus,
       buffer = this.noiseBuffer;
     if (
       !context ||

@@ -279,6 +279,7 @@ export const itemNames = {
   trap: 'Flaque',
   giant: 'Géant',
   shockwave: 'Onde de choc',
+  mud: 'Boue',
 };
 export const itemIcons = {
   missile: '🚀',
@@ -287,6 +288,7 @@ export const itemIcons = {
   trap: '🛢️',
   giant: '🍄',
   shockwave: '💥',
+  mud: '🟤',
 };
 export type Item = keyof typeof itemNames;
 export interface PlayerConfig {

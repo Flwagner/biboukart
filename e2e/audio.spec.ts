@@ -109,6 +109,10 @@ test('all layered sound effects produce distinct finite non-clipping waveforms',
       'countdown',
       'click',
       'block',
+      'roulette',
+      'ready',
+      'mud',
+      'mudHit',
     ]) {
       const context = new OfflineAudioContext(1, 26460, 22050);
       soundEffect(context, context.destination, makeNoise(context), kind, 0);
@@ -125,12 +129,12 @@ test('all layered sound effects produce distinct finite non-clipping waveforms',
     return results;
   });
   console.log('Offline sound effects:', metrics);
-  expect(metrics).toHaveLength(11);
+  expect(metrics).toHaveLength(15);
   for (const metric of metrics) {
     expect(Number.isFinite(metric.rms)).toBe(true);
     expect(metric.peak).toBeGreaterThan(0.01);
     expect(metric.peak).toBeLessThan(1);
     expect(metric.rms).toBeGreaterThan(0.002);
   }
-  expect(new Set(metrics.map((metric) => metric.rms.toFixed(6))).size).toBe(11);
+  expect(new Set(metrics.map((metric) => metric.rms.toFixed(6))).size).toBe(15);
 });

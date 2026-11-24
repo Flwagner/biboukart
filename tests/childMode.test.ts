@@ -43,7 +43,7 @@ describe('per-player child assistance', () => {
     expect(race.racers[2].config.childMode).not.toBe(true);
   });
   it.each(Object.keys(itemNames) as (keyof typeof itemNames)[])(
-    'activates %s immediately on pickup without user input',
+    'activates %s after the roulette without user input',
     (item) => {
       const race = solo();
       const r = race.racers[0];
@@ -57,9 +57,17 @@ describe('per-player child assistance', () => {
 
       race.update(1 / 60, [input]);
 
-      expect(r.item).toBeNull();
-      expect(r.itemCooldown).toBe(0.4);
+      expect(r.item).toBe(item);
+      expect(r.itemRoulette).toBeGreaterThan(0);
+      expect(r.itemCooldown).toBe(0);
       expect(box.cooldown).toBe(5);
+      expect(event.mock.calls.filter(([kind]) => kind === 'pickup' || kind === 'item')).toEqual([
+        ['pickup', r.id],
+      ]);
+
+      tick(race, 1);
+      expect(r.item).toBeNull();
+      expect(r.itemCooldown).toBeGreaterThan(0);
       expect(event.mock.calls.filter(([kind]) => kind === 'pickup' || kind === 'item')).toEqual([
         ['pickup', r.id],
         ['item', r.id, item],
@@ -95,6 +103,10 @@ describe('per-player child assistance', () => {
     vi.spyOn(race, 'chooseItem').mockReturnValue('shield');
 
     tick(race, 0.5);
+    expect(r.item).toBe('shield');
+    expect(r.itemRoulette).toBeGreaterThan(0);
+    expect(r.shield).toBe(0);
+    tick(race, 0.4);
     expect(r.item).toBe('shield');
     expect(r.shield).toBe(0);
     race.update(1 / 60, [{ ...idleInput(), use: true }]);

@@ -6,7 +6,17 @@ test('new power and splash sounds render finite, non-clipping audio', async ({ p
     const { soundEffect } = await import('/src/sounds.ts');
     const { makeNoise } = await import('/src/synth.ts');
     const results = [];
-    for (const sound of ['giant', 'shockwave', 'shockwaveImpact', 'splash', 'hit']) {
+    for (const sound of [
+      'giant',
+      'shockwave',
+      'shockwaveImpact',
+      'splash',
+      'hit',
+      'mud',
+      'mudHit',
+      'roulette',
+      'ready',
+    ]) {
       const context = new OfflineAudioContext(1, 22050, 22050);
       soundEffect(context, context.destination, makeNoise(context), sound, 0);
       const buffer = await context.startRendering();
@@ -188,5 +198,63 @@ test('new gifts render, land and recover correctly in split screen', async ({ pa
       return renderer.effects.karts[1].dust.visible;
     }),
   ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('gift roulette hides the final item until it is ready', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#play').click();
+  await page.evaluate(() => {
+    window.__bibou.start(1, 0);
+    const { race } = window.__bibou;
+    race.countdown = 0;
+    race.elapsed = 5;
+    race.obstacles = [];
+    const r = race.racers[0];
+    race.pickups = [{ t: r.lastT, pos: r.pos.clone(), cooldown: 0 }];
+    race.update(1 / 60, []);
+  });
+  const slot = page.locator('#hud-0 [data-item]');
+  await expect(slot).toHaveClass(/rolling/);
+  await expect(slot).toContainText('CADEAU…');
+  await expect(slot).not.toHaveClass(/rolling/, { timeout: 3000 });
+  await expect(slot).not.toContainText('CADEAU…');
+});
+
+test('mud covers the rivals’ view but not the thrower', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.locator('#play').click();
+  await page.evaluate(() => {
+    window.__bibou.start(2, 0);
+    const { race } = window.__bibou;
+    race.countdown = 0;
+    race.elapsed = 5;
+    race.pickups = [];
+    race.obstacles = [];
+    race.racers.forEach((r: any) => {
+      r.human = true;
+      r.speed = 0;
+    });
+    const thrower = race.racers[0];
+    thrower.item = 'mud';
+    race.use(thrower);
+    // Keep the effect visible while the software renderer's slow HUD catches up.
+    race.racers.slice(1).forEach((r: any) => (r.mud = 30));
+  });
+  await expect(page.locator('#hud-0 [data-mud]')).not.toHaveClass(/active/);
+  await expect(page.locator('#hud-1 [data-mud]')).toHaveClass(/active/);
+  await expect
+    .poll(() =>
+      page
+        .locator('#hud-1 [data-mud]')
+        .evaluate((element) => Number(getComputedStyle(element).opacity)),
+    )
+    .toBeGreaterThan(0.5);
+  await page.screenshot({
+    path: 'test-results/mud-screen.png',
+    style: '#app { visibility: hidden; }',
+  });
   expect(errors).toEqual([]);
 });

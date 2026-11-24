@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
-import { Race, idleInput, type Racer } from '../src/race';
+import { MUD_SECONDS, ROULETTE_SECONDS, Race, idleInput, type Racer } from '../src/race';
 import { itemNames, itemIcons } from '../src/config';
 import { createHazardModel, updateHazardModel } from '../src/itemModels';
 import { RaceEffects } from '../src/effects';
@@ -37,7 +37,7 @@ function tick(race: Race, seconds: number, throttle = 0) {
 }
 
 describe('gift powers', () => {
-  it('distributes all six labelled objects deterministically to every rank', () => {
+  it('distributes every labelled object deterministically to every rank', () => {
     for (let rank = 0; rank < 6; rank++) {
       const race = setup();
       const items = new Set(Array.from({ length: 500 }, () => race.chooseItem(rank)));
@@ -168,6 +168,69 @@ describe('gift powers', () => {
     race.use(r);
     const hazard = race.hazards[0];
     expect(hazard.pos.y).toBeCloseTo(race.track.surface(hazard.pos).height);
+  });
+  it('holds a picked gift behind a short roulette before it can be used', () => {
+    const race = setup(),
+      r = race.racers[0];
+    race.pickups = [{ t: r.lastT, pos: r.pos.clone(), cooldown: 0 }];
+    vi.spyOn(race, 'chooseItem').mockReturnValue('turbo');
+    const events: string[] = [];
+    race.onEvent = (kind) => events.push(kind);
+
+    race.update(1 / 60, [idleInput()]);
+    expect(r.item).toBe('turbo');
+    expect(r.itemRoulette).toBe(ROULETTE_SECONDS);
+    expect(events).toContain('pickup');
+
+    race.use(r);
+    expect(r.item).toBe('turbo');
+    expect(r.boost).toBe(0);
+
+    tick(race, ROULETTE_SECONDS);
+    expect(r.itemRoulette).toBe(0);
+    expect(events).toContain('itemReady');
+    expect(r.item).toBe('turbo');
+
+    race.use(r);
+    expect(r.item).toBeNull();
+    expect(r.boost).toBeGreaterThan(0);
+  });
+  it('covers every rival except the thrower and lets shields absorb the splat', () => {
+    const race = setup(),
+      [thrower, shielded, ...rivals] = race.racers;
+    thrower.item = 'mud';
+    shielded.shield = 5;
+    const events: string[] = [];
+    race.onEvent = (kind, id) => {
+      if (id >= 0) events.push(`${kind}:${id}`);
+    };
+
+    race.use(thrower);
+    expect(thrower.mud).toBe(0);
+    expect(shielded.mud).toBe(0);
+    expect(shielded.shield).toBe(0);
+    expect(shielded.immune).toBe(1);
+    for (const rival of rivals) {
+      expect(rival.mud).toBe(MUD_SECONDS);
+      expect(rival.mudSeed).toBeGreaterThanOrEqual(0);
+      expect(rival.mudSeed).toBeLessThan(1);
+    }
+    expect(events).toContain(`block:${shielded.id}`);
+    expect(events).toContain(`mudHit:${rivals[0].id}`);
+
+    tick(race, MUD_SECONDS);
+    for (const rival of rivals) expect(rival.mud).toBeLessThan(1e-9);
+  });
+  it('makes a muddy bot weave instead of following its usual line', () => {
+    const race = setup(),
+      bot = race.racers[1];
+    bot.human = false;
+    bot.item = null;
+    race.elapsed = 0.2;
+    const clear = race.ai(bot);
+    bot.mud = MUD_SECONDS;
+    const muddy = race.ai(bot);
+    expect(muddy.steer).not.toBe(clear.steer);
   });
 });
 

@@ -972,7 +972,52 @@ body:has(.gamepad-hints:not([hidden])) .menu-shell {
   overflow: hidden;
   text-shadow: 0 2px 5px #162c4b80;
 }
+.mud-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 0.16s linear;
+  transform: rotate(var(--mud-rot, 0rad)) scaleX(var(--mud-flip, 1));
+  background: radial-gradient(circle at 50% 45%, #6e48261f 0 35%, #3a241055 100%);
+  box-shadow: inset 0 0 70px #2f1c0d88;
+}
+.mud-screen.active {
+  animation: mud-splat 0.35s ease-out;
+}
+.mud-screen svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: blur(0.35px);
+}
+.mud-main {
+  opacity: 0.97;
+}
+.mud-lobe {
+  opacity: 0.55;
+}
+.mud-drop {
+  opacity: 0.94;
+}
+.mud-spot {
+  opacity: 0.3;
+}
+@keyframes mud-splat {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mud-screen.active {
+    animation: none;
+  }
+}
 .hud-top {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -1061,6 +1106,13 @@ body:has(.gamepad-hints:not([hidden])) .menu-shell {
   letter-spacing: 1px;
   margin-top: 4px;
   text-transform: uppercase;
+}
+.item-slot.rolling {
+  border-color: #ffe290;
+  box-shadow: 0 0 22px #ffdf8d99;
+}
+.item-slot.rolling small {
+  color: #ffe9a8;
 }
 .wrong-way {
   position: absolute;

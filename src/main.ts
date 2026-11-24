@@ -78,10 +78,58 @@ let pendingUse: boolean[] = [];
 let lastLapUntil: number[] = [];
 let projectMap: ReturnType<typeof mapProjection> | null = null;
 const $ = (selector: string) => app.querySelector<HTMLElement>(selector)!;
+const itemKeys = Object.keys(itemIcons) as (keyof typeof itemIcons)[];
 const button = (label: string, id: string, cls = '') =>
   `<button id="${id}" class="${cls}">${label}</button>`;
 const shell = (body: string, step = '') =>
   `<div class="menu-shell"><header class="topbar"><a class="brand" href="#" id="brand">bibou<span>kart</span><i>✦</i></a><span class="top-tag">${step || 'PETITS KARTS. GRANDES ÉMOTIONS.'}</span><button id="sound" class="icon-button" aria-label="Activer ou couper le son">${settings.volume ? '♫' : '♪'}</button></header>${body}<footer><span>FAIT POUR JOUER ENSEMBLE</span><span class="online-dot">100 % navigateur · 100 % local</span></footer></div>`;
+function mudOverlay(index: number) {
+  const gradient = `mud-gradient-${index}`;
+  return `<div class="mud-screen" data-mud aria-hidden="true">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <radialGradient id="${gradient}" cx="42%" cy="36%" r="72%">
+          <stop offset="0" stop-color="#a97745"/>
+          <stop offset="0.45" stop-color="#7d522c"/>
+          <stop offset="1" stop-color="#4a301a"/>
+        </radialGradient>
+      </defs>
+      <path class="mud-main" fill="url(#${gradient})" d="M50 8C58 5 65 10 67 18C74 14 82 18 84 27C91 30 94 39 89 46C95 53 92 62 84 65C83 74 74 79 66 75C60 84 50 86 43 79C34 84 26 79 24 71C15 70 10 61 14 53C7 47 9 37 17 33C18 24 26 20 33 23C38 13 45 8 50 8Z"/>
+      <path class="mud-lobe" fill="#4a301a" d="M65 13C72 9 80 13 81 21C88 23 90 31 85 37C88 44 82 50 75 47C72 54 63 53 61 46C54 45 52 37 58 32C57 24 60 17 65 13Z"/>
+      <g class="mud-drop" fill="#5a3a1f">
+        <circle cx="16" cy="14" r="4"/>
+        <circle cx="82" cy="11" r="3"/>
+        <circle cx="93" cy="46" r="5"/>
+        <circle cx="86" cy="83" r="3.5"/>
+        <circle cx="62" cy="93" r="2.5"/>
+        <circle cx="29" cy="92" r="3"/>
+        <circle cx="7" cy="63" r="4"/>
+        <circle cx="21" cy="41" r="2.5"/>
+        <circle cx="72" cy="13" r="2"/>
+        <circle cx="48" cy="3" r="2"/>
+        <circle cx="97" cy="66" r="2.5"/>
+        <circle cx="4" cy="30" r="2"/>
+        <ellipse cx="11" cy="27" rx="1.8" ry="5" transform="rotate(22 11 27)"/>
+        <ellipse cx="91" cy="72" rx="2.2" ry="6" transform="rotate(-28 91 72)"/>
+        <ellipse cx="35" cy="6" rx="2" ry="4" transform="rotate(-15 35 6)"/>
+      </g>
+      <g class="mud-drop" fill="#6e4826">
+        <circle cx="88" cy="28" r="2.2"/>
+        <circle cx="74" cy="88" r="2.8"/>
+        <circle cx="13" cy="82" r="2.2"/>
+        <circle cx="44" cy="96" r="1.8"/>
+      </g>
+      <g class="mud-spot" fill="#b07b45">
+        <circle cx="38" cy="30" r="6"/>
+        <circle cx="60" cy="50" r="8"/>
+        <circle cx="45" cy="66" r="5"/>
+        <circle cx="72" cy="34" r="4"/>
+        <circle cx="30" cy="55" r="3"/>
+        <circle cx="56" cy="72" r="4"/>
+      </g>
+    </svg>
+  </div>`;
+}
 function common() {
   inputs.onRemap = null;
   inputs.cancelPadRemap();
@@ -234,7 +282,7 @@ function tracks() {
 function help() {
   screen = 'help';
   app.innerHTML = shell(
-    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🛢️ <b>Flaque</b> : une glissade pour les suivants.<br>🍄 <b>Géant</b> : 7 secondes pour projeter les rivaux et traverser les obstacles.<br>💥 <b>Onde de choc</b> : sautez et assommez les rivaux proches à l’atterrissage.</p><p>Le bouclier bloque aussi les projections et l’onde de choc. Géant ne signifie pas invincible aux objets ! Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Chaque kart s’arrête à l’arrivée du troisième tour. Le podium s’affiche dès que tous les joueurs humains ont terminé, sans limite de temps et sans attendre les bots.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
+    `<section class="panel help"><span class="eyebrow">LE PETIT GUIDE DU PILOTE</span><h1>Facile à prendre en main.</h1><div class="help-grid"><article><h2>01. Prenez le volant</h2><p>Accélérez, freinez et tournez. Pas de drift : gardez la bonne trajectoire ! Maintenez le frein à l’arrêt pour reculer.</p><p><b>Clavier J1</b> : W / A / S / D · Espace : objet<br><b>Clavier J2</b> : flèches · Entrée : objet<br><b>Manette</b> : stick gauche, RT/A, LT/B, X : objet<br><b>Tactile</b> : flèches, accélérateur, frein et cadeau</p></article><article><h2>02. Jouez les surprises</h2><p>🚀 <b>Missile</b> : visez un adversaire devant vous.<br>⚡ <b>Turbo</b> : un petit coup de pouce.<br>🛡️ <b>Bouclier</b> : une attaque bloquée.<br>🛢️ <b>Flaque</b> : une glissade pour les suivants.<br>🍄 <b>Géant</b> : 7 secondes pour projeter les rivaux et traverser les obstacles.<br>💥 <b>Onde de choc</b> : sautez et assommez les rivaux proches à l’atterrissage.<br>🟤 <b>Boue</b> : recouvre l’écran des autres pilotes et trouble les bots ; le bouclier l’absorbe.</p><p>Chaque cadeau s’ouvre après une courte roulette : attendez le signal avant d’appuyer. Le bouclier bloque aussi les projections, l’onde de choc et la boue. Géant ne signifie pas invincible aux objets ! Les bandes jaunes accélèrent votre kart. Les cadeaux reviennent après quelques secondes.</p></article><article><h2>03. Ensemble, jusqu’au bout</h2><p>Six concurrents, trois tours et un podium. Les bots complètent la grille. Chaque kart s’arrête à l’arrivée du troisième tour. Le podium s’affiche dès que tous les joueurs humains ont terminé, sans limite de temps et sans attendre les bots.</p><p><b>Échap / Start</b> : pause.<br>Touches modifiables dans les réglages. Les appuis simultanés dépendent de votre clavier.</p></article></div>${button('Compris, on joue !', 'back', 'primary')}</section>`,
   );
   common();
   $('#back').onclick = home;
@@ -388,14 +436,28 @@ function start() {
   race.onEvent = (kind, id, item) => {
     renderer.react(kind, id);
     if (kind === 'lastlap' && race?.racers[id]?.human) lastLapUntil[id] = race.elapsed + 3;
-    if (kind === 'pickup' && race) renderer.effects?.pickup(id, race.racers[id].pos);
+    if (kind === 'pickup' && race) {
+      renderer.effects?.pickup(id, race.racers[id].pos);
+      if (race.racers[id].human) audio.play('roulette');
+    }
     if ((kind === 'explosion' || kind === 'splash') && race)
       renderer.effects?.impact(id, race.racers[id].pos, kind === 'splash');
+    if ((kind === 'mudHit' || (kind === 'item' && item === 'mud')) && race)
+      renderer.effects?.impact(id, race.racers[id].pos, false, '#6b4a2f');
     if (id < 0) {
       audio.play(kind);
       return;
     }
+    if (kind === 'item') {
+      // Every activation is audible, but rivals sit behind the local players.
+      audio.play(kind, item, !race?.racers[id].human);
+      return;
+    }
     if (!race?.racers[id].human) return;
+    if (kind === 'itemReady') {
+      audio.play('ready');
+      return;
+    }
     audio.play(kind, item);
   };
   buildHUD();
@@ -410,7 +472,7 @@ function buildHUD() {
       .slice(0, playerCount)
       .map(
         (v, i) =>
-          `<section class="player-hud" id="hud-${i}" style="left:${v.x}px;top:${v.y}px;width:${v.w}px;height:${v.h}px"><div class="hud-top"><span class="pilot-tag">J${i + 1} ${characters[players[i].character].icon}</span><div class="lap"><small>TOUR</small><strong data-lap>1 <em>/ 3</em></strong></div><span class="position" data-position>1<small> / 6</small></span></div><div class="hud-center" data-center></div><div class="hud-bottom"><div class="speed"><strong data-speed>0</strong><small>KM/H</small></div><div class="item-slot" data-item>◇<small>CADEAU</small></div></div><div class="wrong-way" data-wrong hidden>↶ Mauvais sens</div>${players[i].device === 'touch' ? `<div class="touch-controls"><div class="touch-steer"><button data-player="${i}" data-action="left" aria-label="Gauche joueur ${i + 1}">◀</button><button data-player="${i}" data-action="right" aria-label="Droite joueur ${i + 1}">▶</button></div><div class="touch-pedals"><button data-player="${i}" data-action="use" aria-label="Objet joueur ${i + 1}">🎁</button><button class="brake" data-player="${i}" data-action="brake" aria-label="Freiner joueur ${i + 1}">■</button><button class="gas" data-player="${i}" data-action="throttle" aria-label="Accélérer joueur ${i + 1}">▲</button></div></div>` : ''}</section>`,
+          `<section class="player-hud" id="hud-${i}" style="left:${v.x}px;top:${v.y}px;width:${v.w}px;height:${v.h}px">${mudOverlay(i)}<div class="hud-top"><span class="pilot-tag">J${i + 1} ${characters[players[i].character].icon}</span><div class="lap"><small>TOUR</small><strong data-lap>1 <em>/ 3</em></strong></div><span class="position" data-position>1<small> / 6</small></span></div><div class="hud-center" data-center></div><div class="hud-bottom"><div class="speed"><strong data-speed>0</strong><small>KM/H</small></div><div class="item-slot" data-item>◇<small>CADEAU</small></div></div><div class="wrong-way" data-wrong hidden>↶ Mauvais sens</div>${players[i].device === 'touch' ? `<div class="touch-controls"><div class="touch-steer"><button data-player="${i}" data-action="left" aria-label="Gauche joueur ${i + 1}">◀</button><button data-player="${i}" data-action="right" aria-label="Droite joueur ${i + 1}">▶</button></div><div class="touch-pedals"><button data-player="${i}" data-action="use" aria-label="Objet joueur ${i + 1}">🎁</button><button class="brake" data-player="${i}" data-action="brake" aria-label="Freiner joueur ${i + 1}">■</button><button class="gas" data-player="${i}" data-action="throttle" aria-label="Accélérer joueur ${i + 1}">▲</button></div></div>` : ''}</section>`,
       )
       .join('') +
     `<button id="pause" class="race-pause" aria-label="Pause">Ⅱ</button><div id="race-clock" class="race-clock"></div><div class="orientation">↻<strong>Tournez votre appareil</strong><span>La piste est plus belle en paysage.</span></div>${playerCount === 3 ? '<div class="fourth-cell"><strong>bibou<span>kart</span></strong><p>Six pilotes. Une seule arrivée.</p></div>' : ''}`;
@@ -450,12 +512,28 @@ function updateHUD() {
           ? '💫 Assommé !'
           : r.shockPending
             ? '💥 Attention à l’atterrissage !'
-            : r.giant > 0
-              ? `🍄 Géant · ${Math.ceil(r.giant)} s`
-              : '';
-    el.querySelector('[data-item]')!.innerHTML = r.item
-      ? `${itemIcons[r.item]}<small>${itemNames[r.item]}</small>`
-      : '◇<small>CADEAU</small>';
+            : r.mud > 0
+              ? `🟤 Boue · ${Math.ceil(r.mud)} s`
+              : r.giant > 0
+                ? `🍄 Géant · ${Math.ceil(r.giant)} s`
+                : '';
+    const itemSlot = el.querySelector<HTMLElement>('[data-item]')!,
+      rolling = r.itemRoulette > 0,
+      rouletteIcon = itemKeys[Math.floor((race.elapsed * 18 + r.id * 3) % itemKeys.length)];
+    itemSlot.classList.toggle('rolling', rolling);
+    itemSlot.innerHTML = rolling
+      ? `${itemIcons[rouletteIcon]}<small>CADEAU…</small>`
+      : r.item
+        ? `${itemIcons[r.item]}<small>${itemNames[r.item]}</small>`
+        : '◇<small>CADEAU</small>';
+    const mud = el.querySelector<HTMLElement>('[data-mud]')!;
+    mud.classList.toggle('active', r.mud > 0);
+    mud.style.opacity = r.mud > 0 ? String(Math.min(0.97, (r.mud / 0.6) * 0.97)) : '0';
+    if (r.mud > 0) {
+      const seed = r.mudSeed % 1;
+      mud.style.setProperty('--mud-rot', `${(seed - 0.5) * 0.35}rad`);
+      mud.style.setProperty('--mud-flip', seed > 0.5 ? '-1' : '1');
+    }
     el.querySelector<HTMLElement>('[data-wrong]')!.hidden = !r.wrongWay;
     const center = el.querySelector<HTMLElement>('[data-center]')!;
     center.textContent =
